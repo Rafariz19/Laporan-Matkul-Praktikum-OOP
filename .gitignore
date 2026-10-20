@@ -1,0 +1,9 @@
+# Abaikan file script Python di folder P9 sesuai permintaan
+P9_Rafael_Rizky_SistemKasirSederhana/*.py
+
+# Compiled Java class files
+*.class
+**/bin/
+
+# File sementara Microsoft Word / Office
+~$*.docx

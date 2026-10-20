@@ -1,0 +1,282 @@
+﻿======================================================================
+PRAKTIKUM P9 - PEMROGRAMAN BERORIENTASI OBYEK
+Implementasi UML Class Diagram ke Program Java
+Nama    : Rafael Rizky Luga Tanjung | NRP : 3125522007
+Kampus  : PENS PSDKU Sumenep (2026)
+Proyek  : Sistem Kasir Sederhana (Refaktorisasi UML Model 9)
+======================================================================
+
+######################################################################
+### SKENARIO 1: INSTANSIASI SUBCLASS & KONSEP ABSTRACT CLASS       ###
+######################################################################
+[AUDIT DESAIN]:
+1. Class 'Produk' dideklarasikan sebagai 'public abstract class'.
+2. 'new Produk(...)' DILARANG oleh compiler Java (Cannot instantiate the type Produk).
+   Hal ini menjamin integritas bisnis: tidak ada produk fiktif tanpa kategori nyata.
+3. Instansiasi HANYA dapat dilakukan melalui Subclass konkret:
+
+[BERHASIL] Objek Subclass 1 (ProdukMakanan) berhasil diinstansiasi: Roti Gandum Sehat
+[BERHASIL] Objek Subclass 2 (ProdukElektronik) berhasil diinstansiasi: Mouse Wireless Ergonomis
+
+######################################################################
+### SKENARIO 2: MEMANGGIL ABSTRACT METHOD VIA REFERENCE SUPERCLASS  ###
+######################################################################
+[INFO] Upcasting: Menyimpan referensi Subclass ke variabel tipe Abstract Class Produk.
+
+--- Pengujian Objek 1 via Referensi 'Produk' (Objek Aktual: ProdukMakanan) ---
+Method getKategoriInfo() : Makanan & Minuman Segar (Konsumsi)
+Memanggil refProduk1.tampilkanData():
+--------------------------------------------------
+Kategori    : Makanan & Minuman Segar (Konsumsi)
+Kode        : M01
+Nama        : Roti Gandum Sehat
+Harga       : Rp 18.000
+Stok        : 25 unit
+Inventaris  : Rp 450.000
+Kadaluarsa  : 25-10-2026
+--------------------------------------------------
+
+--- Pengujian Objek 2 via Referensi 'Produk' (Objek Aktual: ProdukElektronik) ---
+Method getKategoriInfo() : Elektronik & Aksesoris Gadget (Hardware)
+Memanggil refProduk2.tampilkanData():
+--------------------------------------------------
+Kategori    : Elektronik & Aksesoris Gadget (Hardware)
+Kode        : E01
+Nama        : Mouse Wireless Ergonomis
+Harga       : Rp 150.000
+Stok        : 15 unit
+Inventaris  : Rp 2.250.000
+Garansi     : 12 Bulan (Garansi Resmi)
+--------------------------------------------------
+=> KESIMPULAN SKENARIO 2: Dynamic Binding terbukti! JVM mengeksekusi abstract method
+   dan detail khusus yang dioverride oleh masing-masing subclass saat runtime.
+
+######################################################################
+### SKENARIO 3: MEMANGGIL METHOD MELALUI REFERENCE INTERFACE        ###
+######################################################################
+[INFO] Menguji Polymorphism melalui Interface 'DapatDidiskon' (Default Methods):
+
+1. Menguji Objek Makanan via 'DapatDidiskon':
+   Produk                     : Roti Gandum Sehat
+   Harga Asli                 : Rp 18.000
+   Persentase Diskon          : 10%
+   Nominal Diskon (dihitung)  : Rp 1.800
+   Harga Akhir Setelah Diskon : Rp 16.200
+
+2. Menguji Objek Elektronik via 'DapatDidiskon':
+   Produk                     : Mouse Wireless Ergonomis
+   Harga Asli                 : Rp 150.000
+   Persentase Diskon          : 15%
+   Nominal Diskon (dihitung)  : Rp 22.500
+   Harga Akhir Setelah Diskon : Rp 127.500
+=> KESIMPULAN SKENARIO 3: Kontrak Interface dipenuhi tanpa duplikasi kode berkat
+   penerapan default methods pada interface DapatDidiskon.
+
+######################################################################
+### SKENARIO 4: POLYMORPHIC COLLECTION (SUPERCLASS & INTERFACE)      ###
+######################################################################
+[A] Iterasi Array Bertipe Superclass Abstract Produk[]:
+
+[Barang Koleksi #1]
+--------------------------------------------------
+Kategori    : Makanan & Minuman Segar (Konsumsi)
+Kode        : M01
+Nama        : Roti Gandum Sehat
+Harga       : Rp 18.000
+Stok        : 25 unit
+Inventaris  : Rp 450.000
+Kadaluarsa  : 25-10-2026
+--------------------------------------------------
+
+[Barang Koleksi #2]
+--------------------------------------------------
+Kategori    : Elektronik & Aksesoris Gadget (Hardware)
+Kode        : E01
+Nama        : Mouse Wireless Ergonomis
+Harga       : Rp 150.000
+Stok        : 15 unit
+Inventaris  : Rp 2.250.000
+Garansi     : 12 Bulan (Garansi Resmi)
+--------------------------------------------------
+
+[Barang Koleksi #3]
+--------------------------------------------------
+Kategori    : Makanan & Minuman Segar (Konsumsi)
+Kode        : M02
+Nama        : Susu UHT Cokelat 1L
+Harga       : Rp 20.000
+Stok        : 40 unit
+Inventaris  : Rp 800.000
+Kadaluarsa  : 15-12-2026
+--------------------------------------------------
+
+[Barang Koleksi #4]
+--------------------------------------------------
+Kategori    : Elektronik & Aksesoris Gadget (Hardware)
+Kode        : E02
+Nama        : Keyboard Mechanical TKL
+Harga       : Rp 450.000
+Stok        : 8 unit
+Inventaris  : Rp 3.600.000
+Garansi     : 24 Bulan (Garansi Resmi)
+--------------------------------------------------
+
+[B] Iterasi Array Bertipe Interface DapatDidiskon[]:
+Simulasi Promo Flash Sale Serentak Diskon 20%:
+----------------------------------------------------------------------------------
+No   | Nama Produk                  | Harga Asli     | Potongan       | Harga Promo   
+----------------------------------------------------------------------------------
+1    | Roti Gandum Sehat            | Rp      18.000 | Rp       3.600 | Rp      14.400
+2    | Mouse Wireless Ergonomis     | Rp     150.000 | Rp      30.000 | Rp     120.000
+3    | Susu UHT Cokelat 1L          | Rp      20.000 | Rp       4.000 | Rp      16.000
+4    | Keyboard Mechanical TKL      | Rp     450.000 | Rp      90.000 | Rp     360.000
+----------------------------------------------------------------------------------
+=> KESIMPULAN SKENARIO 4: Polymorphic collection mampu memproses seluruh turunan
+   melalui satu antarmuka generik tanpa percabangan manual.
+
+######################################################################
+### SKENARIO 5: INTEGRASI TRANSAKSI PENJUALAN KASIR LENGKAP          ###
+######################################################################
+[LANGKAH 1] Menambahkan item belanjaan (Memanfaatkan Overloading & Polymorphism):
+[INFO] Berhasil menambahkan 2 pcs Roti Gandum Sehat ke transaksi TRX-2026-P7-001
+[INFO] Berhasil menambahkan 1 pcs Mouse Wireless Ergonomis [PROMO 10%] ke transaksi TRX-2026-P7-001
+[INFO] Berhasil menambahkan 3 pcs Susu UHT Cokelat 1L ke transaksi TRX-2026-P7-001
+
+[LANGKAH 2] Memproses transaksi kasir dengan pembayaran tunai (Cash):
+======================================================================
+                         STRUK PENJUALAN TOKO                         
+======================================================================
+No. Transaksi : TRX-2026-P7-001
+Tanggal       : 20-10-2026 10:15
+Pelanggan     : Rafael Rizky (MEMBER-GOLD)
+Status        : PENDING
+----------------------------------------------------------------------
+DAFTAR BELANJAAN:
+1. M01 - Roti Gandum Sehat (Makanan & Minuman Segar (Konsumsi))
+   2 x Rp 18.000              = Rp 36.000
+2. E01 - Mouse Wireless Ergonomis (Elektronik & Aksesoris Gadget (Hardware))
+   1 x Rp 150.000 [Disc 10,0%]  = Rp 135.000
+3. M02 - Susu UHT Cokelat 1L (Makanan & Minuman Segar (Konsumsi))
+   3 x Rp 20.000              = Rp 60.000
+----------------------------------------------------------------------
+Total Pembelian                            : Rp 231.000
+Diskon Member (GOLD: 10%)                  : Rp 23.100
+======================================================================
+TOTAL AKHIR                                : Rp 207.900
+======================================================================
+PEMBAYARAN TUNAI (CASH):
+Tunai Diterima                             : Rp 250.000
+Kembalian                                  : Rp 42.100
+======================================================================
+                 Status Pembayaran: LUNAS                             
+======================================================================
+                 Terima Kasih Atas Kunjungan Anda!                    
+======================================================================
+
+######################################################################
+### SKENARIO 6: VERIFIKASI RELASI ANTAROBJEK (MODUL 9)              ###
+######################################################################
+[A] UJI ASOSIASI (Transaksi --> Pelanggan):
+1. Transaksi Member VIP:
+[INFO] Berhasil menambahkan 1 pcs Keyboard Mechanical TKL ke transaksi TRX-2026-M9-001
+   Total Gross: Rp 450.000 | Diskon Member VIP (15%): Rp 67.500 | Tagihan: Rp 382.500
+
+2. Transaksi Non-Member / Pelanggan Umum (Asosiasi Opsional / Null):
+[INFO] Berhasil menambahkan 3 pcs Roti Gandum Sehat ke transaksi TRX-2026-M9-002
+   Total Gross: Rp 54.000 | Diskon Member: Rp 0 | Tagihan: Rp 54.000
+
+[B] UJI AGREGASI (ItemTransaksi o--> Produk):
+Objek Produk bersifat independen. Stok sebelum transaksi: 20
+ItemTransaksi hanya memegang referensi polymorphic ke Produk.
+
+[C] UJI KOMPOSISI (Transaksi *--> ItemTransaksi):
+ItemTransaksi diciptakan dan dikendalikan penuh di dalam Transaksi.
+Jumlah item di trxVIP: 1
+   - Keyboard Mechanical TKL (Elektronik & Aksesoris Gadget (Hardware)) x 1 @ Rp 450.000 = Rp 450.000
+=> KESIMPULAN SKENARIO 6: Ketiga pola relasi (Asosiasi, Agregasi, Komposisi)
+   terbukti terimplementasi secara akurat sesuai kaidah UML Class Diagram.
+
+######################################################################
+### SKENARIO 7: VALIDASI STATE & UMPAN BALIK KEGAGALAN (MODUL 9)   ###
+######################################################################
+1. Pengujian Validasi Harga Negatif (Produk.ubahHarga):
+[ERROR VALIDASI] Harga produk harus lebih besar dari 0! (Ditolak: Rp -50000)
+   Hasil ubahHarga(-50000) : false (Ditolak dengan aman)
+   Harga aktual sekarang   : Rp 18000
+
+2. Pengujian Validasi Penambahan Stok Negatif (Produk.tambahStok):
+[ERROR VALIDASI] Penambahan stok harus lebih dari 0! (Ditolak: -10)
+   Hasil tambahStok(-10)   : false (Ditolak dengan aman)
+
+3. Pengujian Pembelian Melebihi Stok Tersedia (Transaksi.tambahItem):
+   Stok Keyboard Mechanical saat ini: 7 pcs.
+[ERROR STOK] Pembelian Keyboard Mechanical TKL (999 pcs) melebihi stok yang ada (7 pcs)!
+   Hasil tambahItem(elektro2, 999): false (Ditolak tanpa merusak data)
+   Stok Keyboard setelah penolakan: 7 pcs.
+
+4. Pengujian Pembayaran Tunai Tidak Mencukupi (Underpayment):
+   Total tagihan belanja trxVIP    : Rp 382.500
+======================================================================
+                         STRUK PENJUALAN TOKO                         
+======================================================================
+No. Transaksi : TRX-2026-M9-001
+Tanggal       : 20-10-2026 14:00
+Pelanggan     : Dr. Budi Santoso (MEMBER-VIP)
+Status        : PENDING
+----------------------------------------------------------------------
+DAFTAR BELANJAAN:
+1. E02 - Keyboard Mechanical TKL (Elektronik & Aksesoris Gadget (Hardware))
+   1 x Rp 450.000             = Rp 450.000
+----------------------------------------------------------------------
+Total Pembelian                            : Rp 450.000
+Diskon Member (VIP: 15%)                  : Rp 67.500
+======================================================================
+TOTAL AKHIR                                : Rp 382.500
+======================================================================
+PEMBAYARAN TUNAI (CASH):
+Tunai Diterima                             : Rp 100.000
+[PERINGATAN] Uang Kurang                  : Rp 282.500
+======================================================================
+                 Status Pembayaran: BELUM LUNAS                       
+======================================================================
+         Silakan tambahkan pembayaran untuk menyelesaikan transaksi   
+======================================================================
+   Hasil pembayaran Rp 100.000     : false (Status: PENDING)
+
+5. Pelunasan Transaksi yang Tertunda:
+======================================================================
+                         STRUK PENJUALAN TOKO                         
+======================================================================
+No. Transaksi : TRX-2026-M9-001
+Tanggal       : 20-10-2026 14:00
+Pelanggan     : Dr. Budi Santoso (MEMBER-VIP)
+Status        : PENDING
+----------------------------------------------------------------------
+DAFTAR BELANJAAN:
+1. E02 - Keyboard Mechanical TKL (Elektronik & Aksesoris Gadget (Hardware))
+   1 x Rp 450.000             = Rp 450.000
+----------------------------------------------------------------------
+Total Pembelian                            : Rp 450.000
+Diskon Member (VIP: 15%)                  : Rp 67.500
+======================================================================
+TOTAL AKHIR                                : Rp 382.500
+======================================================================
+PEMBAYARAN TUNAI (CASH):
+Tunai Diterima                             : Rp 400.000
+Kembalian                                  : Rp 17.500
+======================================================================
+                 Status Pembayaran: LUNAS                             
+======================================================================
+                 Terima Kasih Atas Kunjungan Anda!                    
+======================================================================
+   Hasil pembayaran Rp 400.000     : true (Status: LUNAS)
+
+6. Pengujian Validasi Mutasi Data Pelanggan (Format Nomor HP):
+[ERROR VALIDASI] Format nomor HP tidak valid (harus 10-15 digit)! (Ditolak: nomor_palsu_xyz)
+   Hasil ubahNomorHP('nomor_palsu_xyz'): false (Ditolak)
+   Nomor HP tersimpan saat ini          : 081399887766
+
+======================================================================
+SELURUH 7 SKENARIO PENGUJIAN PRAKTIKUM P9 TELAH SELESAI DIEKSEKUSI
+Program berjalan 100% konsisten terhadap spesifikasi UML Class Diagram.
+======================================================================
