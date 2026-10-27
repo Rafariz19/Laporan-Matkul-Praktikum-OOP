@@ -1,0 +1,11 @@
+# ==============================================================================
+# GITIGNORE - P10_3125522007_Rafael_Rizky
+# ==============================================================================
+
+# Abaikan seluruh script Python di folder ini dan subfoldernya
+*.py
+__pycache__/
+*.py[cod]
+
+# Abaikan file kompilasi Java (.class)
+*.class

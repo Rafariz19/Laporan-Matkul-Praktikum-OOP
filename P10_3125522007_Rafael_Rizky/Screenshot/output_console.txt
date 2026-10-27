@@ -1,0 +1,210 @@
+﻿======================================================================
+PRAKTIKUM P10 - PEMROGRAMAN BERORIENTASI OBYEK
+Topik   : Exception Handling dan Validasi State Objek
+Model   : Project Based Learning Berbasis Agile (Sprint P10: Hardening)
+Nama    : Rafael Rizky Luga Tanjung | NRP : 3125522007
+Dosen   : Nirwana Haidar Hari, S.Pd., M.Kom.
+Kampus  : PENS PSDKU Sumenep (2026)
+Proyek  : Sistem Kasir Sederhana (Refaktorisasi Fault-Tolerant)
+======================================================================
+
+>>> [SETUP SPRINT AGILE] Inisialisasi Master Data Toko:
+? Master Produk 1: Roti Gandum Sehat (Stok: 25 unit, Harga: Rp 18000)
+? Master Produk 2: Susu UHT Cokelat 1L (Stok: 40 unit, Harga: Rp 20000)
+? Master Produk 3: Mouse Wireless Ergonomis (Stok: 15 unit, Harga: Rp 150000)
+? Master Produk 4: Keyboard Mechanical TKL (Stok: 8 unit, Harga: Rp 450000)
+? Master Pelanggan: Dr. Budi Santoso (VIP - Diskon 15%)
+
+######################################################################
+### SKENARIO 1: HAPPY PATH CHECKOUT TRANSAKSI LENGKAP               ###
+######################################################################
+[ACTION] Kasir menambahkan item belanja:
+[INFO] Berhasil menambahkan 2 unit Roti Gandum Sehat ke transaksi TRX-2026-M10-001
+[INFO] Berhasil menambahkan 1 unit Mouse Wireless Ergonomis [PROMO 10%] ke transaksi TRX-2026-M10-001
+   Subtotal Kotor : Rp 171.000
+   Diskon VIP 15% : Rp 25.650
+   Grand Total    : Rp 145.350
+
+[ACTION] Konsumen membayar tunai Rp 200.000:
+======================================================================
+                         STRUK PENJUALAN TOKO                         
+======================================================================
+No. Transaksi : TRX-2026-M10-001
+Tanggal       : 26-10-2026 10:15
+Pelanggan     : Dr. Budi Santoso (MEMBER-VIP)
+Status        : LUNAS
+----------------------------------------------------------------------
+DAFTAR BELANJAAN:
+1. M01 - Roti Gandum Sehat (Makanan & Minuman Segar (Konsumsi))
+   2 x Rp 18.000              = Rp 36.000
+2. E01 - Mouse Wireless Ergonomis (Elektronik & Aksesoris Gadget (Hardware))
+   1 x Rp 150.000 [Disc 10,0%]  = Rp 135.000
+----------------------------------------------------------------------
+Total Pembelian                            : Rp 171.000
+Diskon Member (VIP: 15%)                  : Rp 25.650
+======================================================================
+TOTAL AKHIR                                : Rp 145.350
+======================================================================
+PEMBAYARAN TUNAI (CASH):
+Tunai Diterima                             : Rp 200.000
+Kembalian                                  : Rp 54.650
+======================================================================
+                 Status Pembayaran: LUNAS                             
+======================================================================
+                 Terima Kasih Atas Kunjungan Anda!                    
+======================================================================
+[HASIL] Status Pelunasan: SUKSES LUNAS
+[STATE VERIFIKASI SKENARIO 1]:
+   Status Transaksi : LUNAS (Expected: LUNAS)
+   Sisa Stok Roti   : 23 unit (Expected: 23 unit)
+   Sisa Stok Mouse  : 14 unit (Expected: 14 unit)
+   => State Konsisten & Transaksi Selesai Sempurna.
+
+######################################################################
+### SKENARIO 2: CUSTOM EXCEPTION StokTidakCukupException           ###
+######################################################################
+[KONDISI AWAL] Stok Keyboard Mechanical saat ini: 8 unit.
+[ACTION] Kasir mencoba menambahkan 999 unit Keyboard (melebihi stok)...
+[DITANGKAP DENGAN BENAR] StokTidakCukupException:
+   Kode Error    : ERR-STOK-001
+   Timestamp     : 27-10-2026 00:06:07
+   Pesan Bisnis  : Stok produk 'Keyboard Mechanical TKL' tidak mencukupi! Tersedia: 8 unit, diminta: 999 unit (Kurang: 991 unit).
+   Data Objek    : Produk=Keyboard Mechanical TKL, Tersedia=8, Diminta=999, Defisit=991
+[STATE VERIFIKASI SKENARIO 2]:
+   Stok Keyboard Aktual   : 8 unit (Expected: 8 unit)
+   Jumlah Item di Nota    : 0 item (Expected: 0 item)
+   => BUKTI KONSISTENSI STATE: Stok fisik sama sekali tidak berkurang dan nota tidak tercemar!
+
+######################################################################
+### SKENARIO 3: BOUNDARY VALUE ANALYSIS (PEMBELIAN = SISA STOK)     ###
+######################################################################
+[ANALISIS DOMAIN]: Pembelian tepat sejumlah sisa stok fisik HARUS diizinkan.
+Sisa stok saat ini = 8 unit. Pembeli membeli tepat 8 unit.
+[INFO] Berhasil menambahkan 8 unit Keyboard Mechanical TKL ke transaksi TRX-2026-M10-002
+[BERHASIL] Pembelian tepat sejumlah sisa stok sukses diproses.
+[STATE VERIFIKASI SKENARIO 3]:
+   Sisa Stok Keyboard : 0 unit (Expected: 0 unit)
+   Jumlah Item trx2   : 1 item
+   => BUKTI: Nilai batas stok 0 unit adalah state valid dalam sistem kasir.
+
+######################################################################
+### SKENARIO 4: PRECONDITION VALIDATION (IllegalArgumentException)  ###
+######################################################################
+--- Sub-Uji 4A: Pembelian dengan Kuantitas Negatif (-5 unit) ---
+[DITOLAK DENGAN BENAR] IllegalArgumentException: [ERROR VALIDASI] Jumlah beli harus lebih besar dari 0! (Diberikan: -5)
+
+--- Sub-Uji 4B: Perubahan Harga Negatif (Produk.ubahHarga(-50000)) ---
+[DITOLAK DENGAN BENAR] IllegalArgumentException: [ERROR VALIDASI] Harga produk harus lebih besar dari 0! (Ditolak: Rp -50000)
+   Harga Susu Saat Ini : Rp 20000 (Expected: Rp 20000)
+
+--- Sub-Uji 4C: Penambahan Stok Negatif (Produk.tambahStok(-10)) ---
+[DITOLAK DENGAN BENAR] IllegalArgumentException: [ERROR VALIDASI] Penambahan stok harus lebih dari 0 unit! (Ditolak: -10)
+   Stok Susu Saat Ini  : 40 unit (Expected: 40 unit)
+   => BUKTI: Seluruh invariant prekondisi terlindungi dari mutasi nilai negatif.
+
+######################################################################
+### SKENARIO 5: ROBUST INPUT PARSING (NumberFormatException)        ###
+######################################################################
+[SIMULASI]: Kasir memproses rentetan input kuantitas dari terminal input:
+Input: "dua_belas" -> [DITANGKAP DENGAN AMAN] NumberFormatException: Input bukan angka integer valid! Sistem tidak crash.
+Input: "15000X" -> [DITANGKAP DENGAN AMAN] NumberFormatException: Input bukan angka integer valid! Sistem tidak crash.
+Input: "@#$%" -> [DITANGKAP DENGAN AMAN] NumberFormatException: Input bukan angka integer valid! Sistem tidak crash.
+Input: "10" -> [VALID] Berhasil diparse menjadi integer: 10
+=> BUKTI: Fail-Safe handling pada boundary layer menjamin stabilitas terminal kasir.
+
+######################################################################
+### SKENARIO 6: CUSTOM EXCEPTION PembayaranKurangException           ###
+######################################################################
+[INFO TAGIHAN] Transaksi TRX-2026-M10-002 memiliki Total Tagihan: Rp 3.240.000
+[ACTION] Pelanggan membayar uang tunai TIDAK MENCUKUPI (Rp 100.000)...
+[DITANGKAP DENGAN BENAR] PembayaranKurangException:
+   Kode Error      : ERR-PAY-001
+   Timestamp       : 27-10-2026 00:06:07
+   Pesan Kasir     : Pembayaran tunai transaksi 'TRX-2026-M10-002' tidak mencukupi! Total tagihan: Rp 3.240.000, tunai diserahkan: Rp 100.000 (Kekurangan: Rp 3.140.000). Transaksi tetap PENDING.
+   Total Tagihan   : Rp 3.240.000
+   Uang Diterima   : Rp 100.000
+   Defisit/Kurang  : Rp 3.140.000
+[STATE VERIFIKASI SKENARIO 6]:
+   Status Transaksi : PENDING (Expected: PENDING)
+   => BUKTI: Transaksi yang kurang bayar TIDAK PERNAH berubah status menjadi LUNAS.
+
+######################################################################
+### SKENARIO 7: STATE RECOVERY (PELUNASAN TRANSAKSI PENDING)        ###
+######################################################################
+[ACTION] Pelanggan menambahkan uang tunai Rp 4.000.000 (Mencukupi tagihan)...
+======================================================================
+                         STRUK PENJUALAN TOKO                         
+======================================================================
+No. Transaksi : TRX-2026-M10-002
+Tanggal       : 26-10-2026 10:30
+Pelanggan     : Siti Aminah, M.T. (MEMBER-GOLD)
+Status        : LUNAS
+----------------------------------------------------------------------
+DAFTAR BELANJAAN:
+1. E02 - Keyboard Mechanical TKL (Elektronik & Aksesoris Gadget (Hardware))
+   8 x Rp 450.000             = Rp 3.600.000
+----------------------------------------------------------------------
+Total Pembelian                            : Rp 3.600.000
+Diskon Member (GOLD: 10%)                  : Rp 360.000
+======================================================================
+TOTAL AKHIR                                : Rp 3.240.000
+======================================================================
+PEMBAYARAN TUNAI (CASH):
+Tunai Diterima                             : Rp 4.000.000
+Kembalian                                  : Rp 760.000
+======================================================================
+                 Status Pembayaran: LUNAS                             
+======================================================================
+                 Terima Kasih Atas Kunjungan Anda!                    
+======================================================================
+[BERHASIL] Pembayaran diterima! Return status: true
+[STATE VERIFIKASI SKENARIO 7]:
+   Status Transaksi trx2 : LUNAS (Expected: LUNAS)
+   => State recovery berhasil menyelesaikan siklus transaksi kasir secara elegan.
+
+######################################################################
+### SKENARIO 8: CUSTOM EXCEPTION TransaksiKosongException           ###
+######################################################################
+[INFO] Dibuat Transaksi baru (TRX-2026-M10-003) dengan 0 item belanja.
+[ACTION] Kasir memproses checkout pada transaksi kosong...
+[DITANGKAP DENGAN BENAR] TransaksiKosongException:
+   Kode Error    : ERR-TRX-001
+   Pesan Bisnis  : Checkout transaksi 'TRX-2026-M10-003' ditolak! Keranjang belanja masih kosong tanpa komoditas barang.
+[STATE VERIFIKASI SKENARIO 8]:
+   Status Transaksi : PENDING (Expected: PENDING)
+   => BUKTI: Sistem menolak pencetakan nota fiktif tanpa komoditas.
+
+######################################################################
+### SKENARIO 9: CUSTOM EXCEPTION StatusTransaksiInvalidException    ###
+######################################################################
+[INFO] Transaksi TRX-2026-M10-001 berstatus: LUNAS (Final).
+[ACTION] Kasir tidak sengaja mencoba menambah item ke transaksi yang sudah LUNAS...
+[DITANGKAP DENGAN BENAR] StatusTransaksiInvalidException:
+   Kode Error    : ERR-STATE-001
+   Status Saat Ini: LUNAS
+   Operasi Ditolak: tambahItem
+   Pesan Bisnis  : Operasi 'tambahItem' pada transaksi 'TRX-2026-M10-001' ditolak! Transaksi sudah berstatus 'LUNAS' dan bersifat final (immutable).
+[STATE VERIFIKASI SKENARIO 9]:
+   Status Transaksi trx1 : LUNAS (Tetap LUNAS)
+   Jumlah Item Belanja   : 2 item (Tidak berubah)
+   => BUKTI: Transaksi yang lunas terlindungi dari manipulasi data (Immutability Enforced).
+
+######################################################################
+### SKENARIO 10: COMPENSATING ACTION / ROLLBACK STOK PADA PEMBATALAN ###
+######################################################################
+[KONDISI AWAL] Stok Susu UHT: 40 unit.
+[LANGKAH 1] Kasir memasukkan 5 unit Susu UHT ke transaksi 004...
+[INFO] Berhasil menambahkan 5 unit Susu UHT Cokelat 1L ke transaksi TRX-2026-M10-004
+   Sisa Stok Susu setelah tambahItem: 35 unit.
+[LANGKAH 2] Pelanggan memutuskan membatalkan item Susu...
+[INFO] Item Susu UHT Cokelat 1L (5 unit) dibatalkan dari transaksi dan stok inventaris dikembalikan.
+   Sisa Stok Susu setelah batalkanItem: 40 unit.
+[STATE VERIFIKASI SKENARIO 10]:
+   Stok Susu Akhir       : 40 unit (Expected: 40 unit)
+   Jumlah Item Transaksi : 0 item (Expected: 0 item)
+   => BUKTI: Mekanisme rollback menjamin stok kembali utuh tanpa defisit inventaris.
+
+======================================================================
+SELURUH 10 SKENARIO PENGUJIAN PRAKTIKUM P10 SELESAI DIEKSEKUSI
+Validasi State Objek & Exception Handling 100% Lolos Tanpa Bug.
+======================================================================
