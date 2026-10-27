@@ -1,0 +1,190 @@
+@startuml
+skinparam classAttributeIconSize false
+skinparam style strictuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 5
+
+title UML CLASS DIAGRAM - SISTEM KASIR SEDERHANA (MODUL 10: EXCEPTION HANDLING & VALIDASI STATE)
+footer Mahasiswa: Rafael Rizky Luga Tanjung (NRP: 3125522007) - PENS PSDKU Sumenep (2026)
+
+package "model.exception" {
+
+    abstract class KasirException <<Checked Exception>> {
+        - kodeError : String
+        - waktuKejadian : String
+        + KasirException(kodeError: String, pesan: String)
+        + KasirException(kodeError: String, pesan: String, penyebab: Throwable)
+        + getKodeError() : String
+        + getWaktuKejadian() : String
+        + getDetailDiagnostik() : String
+    }
+
+    class StokTidakCukupException {
+        - namaProduk : String
+        - stokTersedia : int
+        - jumlahDiminta : int
+        + StokTidakCukupException(namaProduk: String, stokTersedia: int, jumlahDiminta: int)
+        + StokTidakCukupException(pesan: String)
+        + getNamaProduk() : String
+        + getStokTersedia() : int
+        + getJumlahDiminta() : int
+        + getDefisitStok() : int
+    }
+
+    class PembayaranKurangException {
+        - idTransaksi : String
+        - totalTagihan : double
+        - uangDiterima : double
+        - kekurangan : double
+        + PembayaranKurangException(idTransaksi: String, totalTagihan: double, uangDiterima: double)
+        + getIdTransaksi() : String
+        + getTotalTagihan() : double
+        + getUangDiterima() : double
+        + getKekurangan() : double
+    }
+
+    class TransaksiKosongException {
+        - idTransaksi : String
+        + TransaksiKosongException(idTransaksi: String)
+        + getIdTransaksi() : String
+    }
+
+    class StatusTransaksiInvalidException {
+        - idTransaksi : String
+        - statusSaatIni : String
+        - operasiDiminta : String
+        + StatusTransaksiInvalidException(idTransaksi: String, statusSaatIni: String, operasiDiminta: String)
+        + getIdTransaksi() : String
+        + getStatusSaatIni() : String
+        + getOperasiDiminta() : String
+    }
+}
+
+package "model" {
+
+    interface DapatDidiskon <<Interface>> {
+        + {abstract} getHarga() : int
+        + hitungDiskon(persentase: double) : double
+        + getHargaSetelahDiskon(persentase: double) : double
+    }
+
+    abstract class Produk <<Abstract Class>> {
+        - kode : String
+        - nama : String
+        - harga : int
+        - stok : int
+        + Produk(kode: String, nama: String, harga: int, stok: int)
+        + getKode() : String
+        + getNama() : String
+        + getHarga() : int
+        + getStok() : int
+        + ubahNama(namaBaru: String) : void
+        + ubahHarga(hargaBaru: int) : void
+        + tambahStok(jumlah: int) : void
+        + kurangiStok(jumlah: int) : void throws StokTidakCukupException
+        + cekKetersediaan(jumlah: int) : boolean
+        + hitungNilaiInventaris() : int
+        + {abstract} getKategoriInfo() : String
+        + {abstract} tampilkanDetailKhusus() : void
+        + tampilkanData() : void
+    }
+
+    class ProdukMakanan {
+        - tanggalKadaluarsa : String
+        + ProdukMakanan(kode: String, nama: String, harga: int, stok: int, tanggalKadaluarsa: String)
+        + getTanggalKadaluarsa() : String
+        + ubahTanggalKadaluarsa(tanggalBaru: String) : void
+        + getKategoriInfo() : String
+        + tampilkanDetailKhusus() : void
+    }
+
+    class ProdukElektronik {
+        - garansiBulan : int
+        + ProdukElektronik(kode: String, nama: String, harga: int, stok: int, garansiBulan: int)
+        + getGaransiBulan() : int
+        + ubahGaransiBulan(garansiBaru: int) : void
+        + getKategoriInfo() : String
+        + tampilkanDetailKhusus() : void
+    }
+
+    class Pelanggan {
+        - idPelanggan : String
+        - nama : String
+        - nomorHP : String
+        - tipeMember : String
+        + Pelanggan(idPelanggan: String, nama: String, nomorHP: String, tipeMember: String)
+        + getIdPelanggan() : String
+        + getNama() : String
+        + getNomorHP() : String
+        + getTipeMember() : String
+        + getDiskon() : double
+        + ubahNama(namaBaru: String) : void
+        + ubahNomorHP(nomorHPBaru: String) : void
+        + ubahTipeMember(tipeMemberBaru: String) : void
+        + hitungPotonganMember(totalBelanja: double) : double
+        + tampilkanData() : void
+    }
+
+    class ItemTransaksi {
+        - produk : Produk
+        - jumlahBeli : int
+        - diskonItem : double
+        + ItemTransaksi(produk: Produk, jumlahBeli: int)
+        + ItemTransaksi(produk: Produk, jumlahBeli: int, diskonItem: double)
+        + getProduk() : Produk
+        + getJumlahBeli() : int
+        + getDiskonItem() : double
+        + ubahJumlahBeli(jumlahBaru: int) : void
+        + ubahDiskonItem(diskonBaru: double) : void
+        + hitungSubtotalGross() : int
+        + hitungNominalDiskonItem() : double
+        + hitungSubtotal() : int
+        + tampilkanItem() : void
+    }
+
+    class Transaksi {
+        - idTransaksi : String
+        - tanggal : String
+        - pelanggan : Pelanggan
+        - daftarItem : List<ItemTransaksi>
+        - statusTransaksi : String
+        + Transaksi(idTransaksi: String, tanggal: String, pelanggan: Pelanggan)
+        + getIdTransaksi() : String
+        + getTanggal() : String
+        + getPelanggan() : Pelanggan
+        + getDaftarItem() : List<ItemTransaksi>
+        + getStatusTransaksi() : String
+        + tambahItem(produk: Produk, jumlahBeli: int) : void throws KasirException
+        + tambahItem(produk: Produk, jumlahBeli: int, diskonPromosi: double) : void throws KasirException
+        + batalkanItem(index: int) : void throws KasirException
+        + hitungTotalSubtotal() : int
+        + hitungDiskonNominal() : double
+        + hitungTotalBayar() : double
+        + prosesTransaksi() : void throws KasirException
+        + prosesTransaksi(uangDiterima: double) : boolean throws KasirException
+    }
+}
+
+' --- RELASI HIERARKI EXCEPTION ---
+KasirException <|-- StokTidakCukupException : extends
+KasirException <|-- PembayaranKurangException : extends
+KasirException <|-- TransaksiKosongException : extends
+KasirException <|-- StatusTransaksiInvalidException : extends
+
+' --- RELASI DOMAIN & INHERITANCE ---
+Produk <|-- ProdukMakanan : extends
+Produk <|-- ProdukElektronik : extends
+
+DapatDidiskon <|.. ProdukMakanan : implements
+DapatDidiskon <|.. ProdukElektronik : implements
+
+Transaksi "1" --> "0..1" Pelanggan : association (uses-a)
+Transaksi "1" *-- "1..*" ItemTransaksi : composition (part-of)
+ItemTransaksi "*" o-- "1" Produk : aggregation (references)
+
+' --- DEPENDENCY THROWS ---
+Produk ..> StokTidakCukupException : <<throws>>
+Transaksi ..> KasirException : <<throws>>
+
+@enduml
