@@ -1,0 +1,2 @@
+MK01|Roti Bakar Keju|15000|17|Makanan|2026-12-31
+EL01|Mouse Wireless Silent|125000|9|Elektronik|12

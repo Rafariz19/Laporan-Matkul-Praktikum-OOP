@@ -1,0 +1,187 @@
+@startuml
+skinparam classAttributeIconSize false
+skinparam style strictuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 5
+
+title UML CLASS DIAGRAM - SISTEM KASIR SEDERHANA (MODUL 13: INTEGRASI APLIKASI MENU)
+footer Mahasiswa: Rafael Rizky Luga Tanjung (NRP: 3125522007) - PENS PSDKU Sumenep (2026)
+
+class Main <<Console Boundary / Controller>> {
+    - {static} PATH_PRODUK : Path
+    - {static} PATH_TRANSAKSI : Path
+    - {static} repoProduk : ProdukFileRepository
+    - {static} repoTransaksi : TransaksiFileRepository
+    - {static} katalog : KatalogProduk
+    - {static} berubah : boolean
+    - {static} counterTrx : int
+    + {static} main(args: String[]) : void
+    + {static} jalankanLoop(input: Scanner) : void
+    - {static} menuTambah(input: Scanner) : void
+    - {static} menuTampilkan() : void
+    - {static} menuCari(input: Scanner) : void
+    - {static} menuHapus(input: Scanner) : void
+    - {static} menuTransaksiKasir(input: Scanner) : void
+    - {static} menuSimpan() : void
+    - {static} menuMuatUlang(input: Scanner) : void
+    - {static} konfirmasi(input: Scanner, pesan: String) : boolean
+}
+
+package "model.exception" {
+
+    abstract class KasirException <<Checked Exception>> {
+        - kodeError : String
+        - waktuKejadian : String
+        + KasirException(kodeError: String, pesan: String)
+        + getKodeError() : String
+        + getWaktuKejadian() : String
+        + getDetailDiagnostik() : String
+    }
+
+    class StokTidakCukupException {
+        - namaProduk : String
+        - stokTersedia : int
+        - jumlahDiminta : int
+        + StokTidakCukupException(nama: String, stok: int, minta: int)
+        + getDefisitStok() : int
+    }
+
+    class PembayaranKurangException {
+        - idTransaksi : String
+        - totalTagihan : double
+        - uangDiterima : double
+        - kekurangan : double
+        + PembayaranKurangException(id: String, tagihan: double, bayar: double)
+        + getKekurangan() : double
+    }
+
+    class TransaksiKosongException {
+        - idTransaksi : String
+        + TransaksiKosongException(idTransaksi: String)
+        + getIdTransaksi() : String
+    }
+
+    class StatusTransaksiInvalidException {
+        - idTransaksi : String
+        - statusSaatIni : String
+        - operasiDiminta : String
+        + StatusTransaksiInvalidException(id: String, status: String, op: String)
+        + getStatusSaatIni() : String
+    }
+}
+
+package "model" {
+
+    interface DapatDidiskon <<Interface>> {
+        + {abstract} getHarga() : int
+        + hitungDiskon(persentase: double) : double
+        + getHargaSetelahDiskon(persentase: double) : double
+    }
+
+    abstract class Produk <<Abstract Class>> {
+        - kode : String
+        - nama : String
+        - harga : int
+        - stok : int
+        + Produk(kode: String, nama: String, harga: int, stok: int)
+        + getKode() : String
+        + getNama() : String
+        + getHarga() : int
+        + getStok() : int
+        + kurangiStok(jumlah: int) : void throws StokTidakCukupException
+        + {abstract} getKategoriInfo() : String
+    }
+
+    class ProdukMakanan {
+        - tanggalKadaluarsa : String
+        + ProdukMakanan(kode: String, nama: String, harga: int, stok: int, tgl: String)
+        + getTanggalKadaluarsa() : String
+    }
+
+    class ProdukElektronik {
+        - garansiBulan : int
+        + ProdukElektronik(kode: String, nama: String, harga: int, stok: int, garansi: int)
+        + getGaransiBulan() : int
+    }
+
+    class KatalogProduk <<Manager / Collection>> {
+        - daftarProduk : List<Produk>
+        + tambahProduk(produk: Produk) : void
+        + cariProduk(kode: String) : Produk
+        + cariProdukByNama(keyword: String) : List<Produk>
+        + hapusProduk(kode: String) : boolean
+        + gantiSemuaProduk(produkBaru: List<Produk>) : void
+        + tampilkanKatalog() : void
+        + getJumlahProduk() : int
+    }
+
+    class ProdukFileRepository <<Persistence Repository>> {
+        + simpan(lokasi: Path, katalog: KatalogProduk) : void throws IOException
+        + muat(lokasi: Path, katalog: KatalogProduk) : void throws IOException
+    }
+
+    class TransaksiFileRepository <<Persistence Repository>> {
+        + catatTransaksi(lokasi: Path, trx: Transaksi, bayar: double, kembali: double) : void throws IOException
+    }
+
+    class Pelanggan {
+        - idPelanggan : String
+        - nama : String
+        - tipeMember : String
+        + Pelanggan(id: String, nama: String, hp: String, member: String)
+        + getDiskon() : double
+    }
+
+    class ItemTransaksi {
+        - produk : Produk
+        - jumlahBeli : int
+        - diskonItem : double
+        + ItemTransaksi(produk: Produk, jumlahBeli: int, diskonItem: double)
+        + hitungSubtotal() : int
+    }
+
+    class Transaksi {
+        - idTransaksi : String
+        - tanggal : String
+        - pelanggan : Pelanggan
+        - daftarItem : List<ItemTransaksi>
+        - statusTransaksi : String
+        + Transaksi(idTransaksi: String, tanggal: String, pelanggan: Pelanggan)
+        + tambahItem(produk: Produk, jumlahBeli: int) : void throws KasirException
+        + hitungTotalBayar() : double
+        + prosesTransaksi(uangDiterima: double) : boolean throws KasirException
+    }
+}
+
+' --- RELASI HIERARKI EXCEPTION ---
+KasirException <|-- StokTidakCukupException : extends
+KasirException <|-- PembayaranKurangException : extends
+KasirException <|-- TransaksiKosongException : extends
+KasirException <|-- StatusTransaksiInvalidException : extends
+
+' --- RELASI DOMAIN & INHERITANCE ---
+Produk <|-- ProdukMakanan : extends
+Produk <|-- ProdukElektronik : extends
+
+DapatDidiskon <|.. ProdukMakanan : implements
+DapatDidiskon <|.. ProdukElektronik : implements
+
+' --- RELASI KOLEKSI & REPOSITORY ---
+KatalogProduk "1" *-- "0..*" Produk : composition / manages
+ProdukFileRepository ..> KatalogProduk : persists / loads
+TransaksiFileRepository ..> Transaksi : logs / records
+
+' --- RELASI TRANSAKSI ---
+Transaksi "1" --> "0..1" Pelanggan : association (uses-a)
+Transaksi "1" *-- "1..*" ItemTransaksi : composition (part-of)
+ItemTransaksi "*" o-- "1" Produk : aggregation (references)
+
+' --- CONTROLLER RELATIONS (MODUL 13) ---
+Main ..> KatalogProduk : manages
+Main ..> ProdukFileRepository : invokes
+Main ..> TransaksiFileRepository : invokes
+Main ..> Transaksi : creates & checkout
+
+@enduml
+

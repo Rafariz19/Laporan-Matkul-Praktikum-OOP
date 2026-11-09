@@ -1,0 +1,4 @@
+M01|Roti Gandum Sehat|18000|23|Makanan|2026-12-31
+M02|Susu UHT Cokelat 1L|20000|40|Makanan|2027-01-15
+E01|Mouse Wireless Ergonomis|150000|14|Elektronik|12
+E02|Keyboard Mechanical TKL|450000|8|Elektronik|24
