@@ -82,13 +82,40 @@ public class KatalogProduk {
      * @return true jika produk berhasil diperbarui, false jika kode tidak ditemukan
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
-    public boolean ubahProduk(String kode, String namaBaru, int hargaBaru, int stokBaru, String extraBaru) {
-        Produk p = cariProduk(kode);
+    /**
+     * Memperbarui data produk termasuk kode produk baru (dengan validasi keunikan kode).
+     * 
+     * @param kodeLama   kode produk yang akan diedit (sebagai kunci pencarian saat ini)
+     * @param kodeBaru   kode produk baru yang diinginkan
+     * @param namaBaru   nama baru produk
+     * @param hargaBaru  harga satuan baru produk
+     * @param stokBaru   jumlah stok baru produk
+     * @param extraBaru  info khusus (tanggal kadaluarsa untuk makanan, durasi garansi untuk elektronik)
+     * @return true jika produk berhasil diperbarui, false jika kode lama tidak ditemukan
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis atau kode baru duplikat
+     */
+    public boolean ubahProduk(String kodeLama, String kodeBaru, String namaBaru, int hargaBaru, int stokBaru, String extraBaru) {
+        Produk p = cariProduk(kodeLama);
         if (p == null) {
             return false;
         }
 
         // --- PRE-VALIDASI KETAT (ATOMIC INVARIANCE MODUL 10 & 11) ---
+        if (kodeBaru == null || kodeBaru.trim().isEmpty()) {
+            throw new IllegalArgumentException("[ERROR VALIDASI] Kode produk baru tidak boleh kosong atau null!");
+        }
+        if (kodeBaru.contains("|") || kodeBaru.contains("\n") || kodeBaru.contains("\r")) {
+            throw new IllegalArgumentException("[ERROR SANITASI] Kode produk baru tidak boleh mengandung pemisah '|' atau baris baru!");
+        }
+
+        // Jika kode produk diubah, pastikan kode baru belum dipakai produk lain
+        if (!p.getKode().equalsIgnoreCase(kodeBaru.trim())) {
+            Produk duplikat = cariProduk(kodeBaru.trim());
+            if (duplikat != null && duplikat != p) {
+                throw new IllegalArgumentException("[ERROR VALIDASI] Kode produk baru '" + kodeBaru.trim() + "' sudah digunakan oleh produk lain!");
+            }
+        }
+
         if (namaBaru == null || namaBaru.trim().isEmpty()) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Nama produk baru tidak boleh kosong atau null!");
         }
@@ -119,6 +146,7 @@ public class KatalogProduk {
         }
 
         // --- MUTASI HANYA SETELAH SELURUH VALIDASI LOLOS ---
+        p.ubahKode(kodeBaru.trim());
         p.ubahNama(namaBaru);
         p.ubahHarga(hargaBaru);
         p.ubahStok(stokBaru);
@@ -130,6 +158,13 @@ public class KatalogProduk {
         }
 
         return true;
+    }
+
+    /**
+     * Overload ubahProduk untuk kompatibilitas jika kode produk tidak diubah.
+     */
+    public boolean ubahProduk(String kode, String namaBaru, int hargaBaru, int stokBaru, String extraBaru) {
+        return ubahProduk(kode, kode, namaBaru, hargaBaru, stokBaru, extraBaru);
     }
 
     public boolean hapusProduk(String kode) {

@@ -76,6 +76,22 @@ public abstract class Produk {
     // --- BEHAVIOR METHODS DENGAN VALIDASI & EXCEPTION HANDLING TEPAT ---
 
     /**
+     * Mengubah kode produk dengan validasi ketat.
+     * 
+     * @param kodeBaru kode produk yang baru (tidak boleh kosong atau mengandung pemisah file)
+     * @throws IllegalArgumentException jika kode baru kosong, null, atau tidak valid
+     */
+    public void ubahKode(String kodeBaru) {
+        if (kodeBaru == null || kodeBaru.trim().isEmpty()) {
+            throw new IllegalArgumentException("[ERROR VALIDASI] Kode produk baru tidak boleh kosong atau null!");
+        }
+        if (kodeBaru.contains("|") || kodeBaru.contains("\n") || kodeBaru.contains("\r")) {
+            throw new IllegalArgumentException("[ERROR SANITASI] Kode produk baru tidak boleh mengandung pemisah '|' atau baris baru!");
+        }
+        this.kode = kodeBaru.trim();
+    }
+
+    /**
      * Mengubah nama produk dengan validasi input string.
      * 
      * @param namaBaru nama produk yang baru
