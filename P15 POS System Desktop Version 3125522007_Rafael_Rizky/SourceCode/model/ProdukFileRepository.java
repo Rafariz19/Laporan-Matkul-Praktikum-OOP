@@ -56,11 +56,8 @@ public class ProdukFileRepository {
             barisList.add(kode + "|" + nama + "|" + harga + "|" + stok + "|" + kategori + "|" + extra);
         }
 
-        // Tulis ke disk
-        if (lokasi.getParent() != null) {
-            Files.createDirectories(lokasi.getParent());
-        }
-        Files.write(lokasi, barisList, StandardCharsets.UTF_8);
+        // Tulis ke disk secara crash-safe atomic write dengan auto-backup
+        FileIoUtil.atomicWriteLines(lokasi, barisList);
     }
 
     /**

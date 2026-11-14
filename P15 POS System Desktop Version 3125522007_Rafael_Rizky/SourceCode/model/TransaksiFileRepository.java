@@ -162,9 +162,9 @@ public class TransaksiFileRepository {
         }
         lines.set(targetIndex, updatedLine.toString());
 
-        // 5. Tulis pembaruan ke berkas dengan rollback memori jika gagal
+        // 5. Tulis pembaruan ke berkas secara crash-safe atomic write dengan rollback memori jika gagal
         try {
-            Files.write(pathTransaksi, lines, StandardCharsets.UTF_8);
+            FileIoUtil.atomicWriteLines(pathTransaksi, lines);
         } catch (IOException ex) {
             // Rollback stok di memori jika I/O gagal
             for (int i = 0; i < prodsRestored.size(); i++) {

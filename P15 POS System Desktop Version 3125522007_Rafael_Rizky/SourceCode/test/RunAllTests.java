@@ -4,7 +4,7 @@ package test;
  * Test Suite Runner Terpadu - P15 POS System Desktop Version
  * Mengeksekusi seluruh pengujian invariansi bisnis, immutability, persistensi berkas aman,
  * multi-role otentikasi, log item granular, laporan harian, pembatalan nota (VOID),
- * diskon dinamis kedaluwarsa, dan pola Strategy pembayaran (Tunai, QRIS Simulasi, Split Payment).
+ * diskon dinamis kedaluwarsa, strategi pembayaran, dan Crash-Safe Atomic Write (Fase 0 - Fase 3).
  * 
  * Mata Kuliah : Praktikum Pemrograman Berorientasi Obyek (PBO)
  * Mahasiswa   : Rafael Rizky Luga Tanjung (NRP: 3125522007)
@@ -45,9 +45,12 @@ public class RunAllTests {
         TestDiskonKadaluarsaDanStok.main(new String[0]);
         TestStrategyPembayaran.main(new String[0]);
 
+        // Uji Fase 3
+        TestCrashSafeAtomicWrite.main(new String[0]);
+
         long durasi = System.currentTimeMillis() - start;
         System.out.println("======================================================================");
-        System.out.println("   HASIL AKHIR: 13/13 PENGUJIAN LULUS DENGAN SUKSES (100% PASS)       ");
+        System.out.println("   HASIL AKHIR: 14/14 PENGUJIAN LULUS DENGAN SUKSES (100% PASS)       ");
         System.out.println("   Total Durasi Pengujian: " + durasi + " ms                          ");
         System.out.println("======================================================================");
     }

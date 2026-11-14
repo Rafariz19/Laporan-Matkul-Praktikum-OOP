@@ -100,16 +100,7 @@ public class AuthService {
         User newUser = new User(userClean, saltHex, hashHex, role);
 
         String baris = userClean + "|" + saltHex + "|" + hashHex + "|" + role.name();
-        if (userFilePath.getParent() != null) {
-            Files.createDirectories(userFilePath.getParent());
-        }
-
-        List<String> list = List.of(baris);
-        if (Files.exists(userFilePath)) {
-            Files.write(userFilePath, list, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-        } else {
-            Files.write(userFilePath, list, StandardCharsets.UTF_8, StandardOpenOption.CREATE);
-        }
+        FileIoUtil.appendLine(userFilePath, baris);
 
         return newUser;
     }
