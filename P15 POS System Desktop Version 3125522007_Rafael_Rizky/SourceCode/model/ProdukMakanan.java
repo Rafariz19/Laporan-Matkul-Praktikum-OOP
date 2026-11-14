@@ -1,17 +1,34 @@
 package model;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+
 /**
  * Subclass: ProdukMakanan
  * Komoditas konsumsi yang memiliki masa simpan dan tanggal kadaluarsa.
  * Mewarisi abstract class Produk dan mengimplementasikan interface DapatDidiskon.
  * 
- * Sesuai Modul 10:
- * Menegakkan validasi ketat pada tanggal kadaluarsa menggunakan IllegalArgumentException.
+ * Sesuai Modul 10 & Fase 2:
+ * - Menegakkan validasi ketat pada tanggal kadaluarsa menggunakan LocalDate.
+ * - Parsing fleksibel: mendukung format standar ISO (yyyy-MM-dd) dan format Indonesia (dd-MM-yyyy).
+ * - Logika diskon dinamis kedaluwarsa berbasis java.time.Clock yang dapat diinjeksi.
+ *   Jenjang Diskon:
+ *   * Sisa > 14 hari  : 0%
+ *   * Sisa 8 - 14 hari : 10%
+ *   * Sisa 4 - 7 hari  : 25%
+ *   * Sisa 1 - 3 hari  : 40%
+ *   * Hari H (0 hari)  : 50%
+ *   * Sisa < 0 hari    : Kedaluwarsa (kadaluarsa)
  * 
  * Mahasiswa: Rafael Rizky Luga Tanjung (NRP: 3125522007) - PENS PSDKU Sumenep (2026)
  */
 public class ProdukMakanan extends Produk implements DapatDidiskon {
-    private String tanggalKadaluarsa;
+    private LocalDate tanggalKadaluarsaDate;
+    private static final DateTimeFormatter FORMAT_ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter FORMAT_ID = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     /**
      * Constructor ProdukMakanan.
@@ -20,37 +37,115 @@ public class ProdukMakanan extends Produk implements DapatDidiskon {
      * @param nama              nama barang makanan
      * @param harga             harga satuan makanan (> 0)
      * @param stok              jumlah stok makanan (>= 0)
-     * @param tanggalKadaluarsa tanggal masa berlaku kadaluarsa (format: DD-MM-YYYY)
+     * @param tanggalKadaluarsa tanggal masa berlaku kadaluarsa (format: yyyy-MM-dd atau dd-MM-yyyy)
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
     public ProdukMakanan(String kode, String nama, int harga, int stok, String tanggalKadaluarsa) {
         super(kode, nama, harga, stok);
-        if (tanggalKadaluarsa == null || tanggalKadaluarsa.trim().isEmpty()) {
+        this.tanggalKadaluarsaDate = parseTanggal(tanggalKadaluarsa);
+    }
+
+    private static LocalDate parseTanggal(String str) {
+        if (str == null || str.trim().isEmpty()) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Tanggal kadaluarsa tidak boleh kosong atau null!");
         }
-        if (tanggalKadaluarsa.contains("|") || tanggalKadaluarsa.contains("\n") || tanggalKadaluarsa.contains("\r")) {
+        if (str.contains("|") || str.contains("\n") || str.contains("\r")) {
             throw new IllegalArgumentException("[ERROR SANITASI] Tanggal kadaluarsa tidak boleh mengandung pemisah '|' atau baris baru!");
         }
-        this.tanggalKadaluarsa = tanggalKadaluarsa.trim();
+        String clean = str.trim();
+        // Coba format yyyy-MM-dd dulu
+        try {
+            return LocalDate.parse(clean, FORMAT_ISO);
+        } catch (DateTimeParseException e1) {
+            // Coba format dd-MM-yyyy
+            try {
+                return LocalDate.parse(clean, FORMAT_ID);
+            } catch (DateTimeParseException e2) {
+                throw new IllegalArgumentException("[ERROR FORMAT] Format tanggal kadaluarsa harus yyyy-MM-dd atau dd-MM-yyyy! (Diberikan: " + clean + ")");
+            }
+        }
     }
 
     // --- GETTER & MUTATOR ---
 
+    /**
+     * Mengembalikan representasi tanggal kadaluarsa dalam format standar yyyy-MM-dd
+     * untuk konsistensi repositori dan backward compatibility.
+     */
     public String getTanggalKadaluarsa() {
-        return tanggalKadaluarsa;
+        return tanggalKadaluarsaDate.format(FORMAT_ISO);
+    }
+
+    public LocalDate getTanggalKadaluarsaDate() {
+        return tanggalKadaluarsaDate;
     }
 
     /**
      * Mengubah tanggal kadaluarsa dengan validasi ketat.
      * 
-     * @param tanggalBaru format tanggal baru (DD-MM-YYYY)
-     * @throws IllegalArgumentException jika tanggalBaru null atau kosong
+     * @param tanggalBaru format tanggal baru (yyyy-MM-dd atau dd-MM-yyyy)
+     * @throws IllegalArgumentException jika tanggalBaru null atau tidak valid
      */
     public void ubahTanggalKadaluarsa(String tanggalBaru) {
-        if (tanggalBaru == null || tanggalBaru.trim().isEmpty()) {
-            throw new IllegalArgumentException("[ERROR VALIDASI] Tanggal kadaluarsa baru tidak boleh kosong!");
+        this.tanggalKadaluarsaDate = parseTanggal(tanggalBaru);
+    }
+
+    // --- LOGIKA DISKON & KADALUARSA BERBASIS CLOCK ---
+
+    /**
+     * Menghitung sisa hari hingga tanggal kedaluwarsa berdasarkan Clock yang diinjeksi.
+     * 
+     * @param clock objek java.time.Clock pengukur waktu
+     * @return sisa hari (positif jika belum exp, 0 jika hari H, negatif jika telah lewat)
+     */
+    public long hitungSisaHari(Clock clock) {
+        LocalDate hariIni = (clock != null) ? LocalDate.now(clock) : LocalDate.now();
+        return ChronoUnit.DAYS.between(hariIni, this.tanggalKadaluarsaDate);
+    }
+
+    public long hitungSisaHari() {
+        return hitungSisaHari(Clock.systemDefaultZone());
+    }
+
+    /**
+     * Mengecek apakah komoditas makanan sudah kadaluarsa (sisa hari < 0).
+     */
+    public boolean isKadaluarsa(Clock clock) {
+        return hitungSisaHari(clock) < 0;
+    }
+
+    public boolean isKadaluarsa() {
+        return isKadaluarsa(Clock.systemDefaultZone());
+    }
+
+    /**
+     * Menghitung persentase diskon dinamis kedaluwarsa berdasarkan jenjang sisa hari.
+     * Sisa > 14 hari  : 0%
+     * Sisa 8 - 14 hari : 10% (0.10)
+     * Sisa 4 - 7 hari  : 25% (0.25)
+     * Sisa 1 - 3 hari  : 40% (0.40)
+     * Hari H (0 hari)  : 50% (0.50)
+     * Sisa < 0 hari    : 0.0 (sudah kadaluarsa, dilarang dijual)
+     */
+    public double hitungDiskonKedaluwarsa(Clock clock) {
+        long sisa = hitungSisaHari(clock);
+        if (sisa < 0) {
+            return 0.0;
+        } else if (sisa == 0) {
+            return 0.50; // Hari H: Diskon 50%
+        } else if (sisa <= 3) {
+            return 0.40; // 1-3 hari: Diskon 40%
+        } else if (sisa <= 7) {
+            return 0.25; // 4-7 hari: Diskon 25%
+        } else if (sisa <= 14) {
+            return 0.10; // 8-14 hari: Diskon 10%
+        } else {
+            return 0.0;  // > 14 hari: Harga Normal
         }
-        this.tanggalKadaluarsa = tanggalBaru.trim();
+    }
+
+    public double hitungDiskonKedaluwarsa() {
+        return hitungDiskonKedaluwarsa(Clock.systemDefaultZone());
     }
 
     // --- IMPLEMENTASI ABSTRACT METHODS ---
@@ -62,6 +157,6 @@ public class ProdukMakanan extends Produk implements DapatDidiskon {
 
     @Override
     public void tampilkanDetailKhusus() {
-        System.out.println("Kadaluarsa  : " + tanggalKadaluarsa);
+        System.out.println("Kadaluarsa  : " + getTanggalKadaluarsa() + " (Sisa: " + hitungSisaHari() + " hari)");
     }
 }

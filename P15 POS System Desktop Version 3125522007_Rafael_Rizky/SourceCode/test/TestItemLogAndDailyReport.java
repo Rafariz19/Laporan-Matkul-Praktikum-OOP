@@ -24,7 +24,7 @@ public class TestItemLogAndDailyReport {
 
             KatalogProduk katalog = new KatalogProduk();
             Produk roti = new ProdukMakanan("MK01", "Roti Coklat", 10000, 50, "2026-12-31");
-            Produk susu = new ProdukMakanan("MK02", "Susu Segar", 15000, 40, "2026-10-15");
+            Produk susu = new ProdukMakanan("MK02", "Susu Segar", 15000, 40, "2026-12-30");
             katalog.tambahProduk(roti);
             katalog.tambahProduk(susu);
 

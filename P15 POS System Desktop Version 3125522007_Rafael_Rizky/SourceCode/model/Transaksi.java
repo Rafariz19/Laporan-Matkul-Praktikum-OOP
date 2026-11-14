@@ -1,10 +1,12 @@
 package model;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import model.exception.KasirException;
 import model.exception.PembayaranKurangException;
+import model.exception.ProdukKadaluarsaException;
 import model.exception.StatusTransaksiInvalidException;
 import model.exception.StokTidakCukupException;
 import model.exception.TransaksiKosongException;
@@ -16,14 +18,16 @@ import model.exception.TransaksiKosongException;
  * Hubungan Relasi:
  * 1. Association (-->) ke Pelanggan: Transaksi menggunakan data Pelanggan (uses-a).
  * 2. Composition (*-->) ke ItemTransaksi: Transaksi mengontrol siklus hidup ItemTransaksi.
+ * 3. Strategy Pattern: Menggunakan MetodePembayaran untuk eksekusi checkout fleksibel.
  * 
- * Sesuai Modul 10:
+ * Sesuai Modul 10, Fase 1 & Fase 2:
  * - Menjamin Konsistensi State & Atomisitas Transaksi (Fail-Safe Invariants).
- * - Mengganti silent failure / return boolean dengan throwing Checked Exception spesifik:
+ * - Throwing Checked Exception spesifik:
  *   * StokTidakCukupException saat kuantitas barang melebihi stok fisik produk.
- *   * PembayaranKurangException saat uang tunai konsumen tidak mencukupi total tagihan.
+ *   * PembayaranKurangException saat uang tunai/digital konsumen tidak mencukupi total tagihan.
  *   * TransaksiKosongException saat checkout dipanggil pada nota tanpa komoditas.
  *   * StatusTransaksiInvalidException saat mutasi dicoba pada nota yang sudah LUNAS.
+ *   * ProdukKadaluarsaException saat komoditas makanan kadaluarsa hendak dimasukkan ke keranjang.
  * 
  * Mahasiswa: Rafael Rizky Luga Tanjung (NRP: 3125522007) - PENS PSDKU Sumenep (2026)
  */
@@ -33,6 +37,7 @@ public class Transaksi {
     private Pelanggan pelanggan;
     private ArrayList<ItemTransaksi> daftarItem;
     private String statusTransaksi; // "PENDING", "LUNAS", "DIBATALKAN"
+    private MetodePembayaran metodePembayaranTerpilih; // Disimpan saat checkout berhasil
 
     /**
      * Constructor Transaksi.
@@ -75,24 +80,46 @@ public class Transaksi {
         return statusTransaksi;
     }
 
+    public MetodePembayaran getMetodePembayaranTerpilih() {
+        return metodePembayaranTerpilih;
+    }
+
     // =========================================================================
     // METHOD OVERLOADING 1: tambahItem (Penambahan Keranjang & Kontrol Stok)
     // =========================================================================
 
     /**
-     * Menambahkan item belanjaan tanpa diskon promosi baris.
+     * Menambahkan item belanjaan dengan pengecekan kedaluwarsa & kalkulasi diskon dinamis (jika makanan).
+     * Menggunakan Clock sistem default.
      * 
      * @param produk     objek produk polimorfik
      * @param jumlahBeli kuantitas yang dibeli
-     * @throws KasirException jika terjadi pelanggaran stok atau status transaksi
-     * @throws IllegalArgumentException jika parameter produk atau jumlah tidak valid
+     * @throws KasirException jika terjadi pelanggaran stok, status, atau expired
      */
     public void tambahItem(Produk produk, int jumlahBeli) throws KasirException {
-        tambahItem(produk, jumlahBeli, 0.0);
+        tambahItem(produk, jumlahBeli, Clock.systemDefaultZone());
     }
 
     /**
-     * Menambahkan item belanjaan dengan diskon promosi per baris barang.
+     * Menambahkan item belanjaan dengan evaluasi kedaluwarsa berbasis Clock yang diinjeksi.
+     * Jika produk adalah ProdukMakanan:
+     * - Lempar ProdukKadaluarsaException jika sudah lewat tanggal kadaluarsa.
+     * - Terapkan diskon dinamis mendekati kadaluarsa otomatis ke baris item belanja.
+     */
+    public void tambahItem(Produk produk, int jumlahBeli, Clock clock) throws KasirException {
+        double diskonPromo = 0.0;
+        if (produk instanceof ProdukMakanan) {
+            ProdukMakanan pm = (ProdukMakanan) produk;
+            if (pm.isKadaluarsa(clock)) {
+                throw new ProdukKadaluarsaException(pm.getKode(), pm.getNama(), pm.getTanggalKadaluarsa());
+            }
+            diskonPromo = pm.hitungDiskonKedaluwarsa(clock);
+        }
+        tambahItem(produk, jumlahBeli, diskonPromo);
+    }
+
+    /**
+     * Menambahkan item belanjaan dengan diskon promosi per baris barang eksplisit.
      * Menjamin prinsip Atomisitas: stok berkurang HANYA jika validasi lolos,
      * dan item masuk ke daftar belanja HANYA jika stok berhasil dikurangi.
      * 
@@ -212,13 +239,7 @@ public class Transaksi {
     }
 
     /**
-     * Memproses checkout transaksi dengan validasi pembayaran tunai,
-     * kalkulasi kembalian, serta penegakan konsistensi state.
-     * 
-     * Sesuai Modul 10:
-     * - Jika keranjang kosong -> lempar TransaksiKosongException
-     * - Jika uang kurang -> lempar PembayaranKurangException, state statusTransaksi tetap "PENDING"
-     * - Jika uang mencukupi -> state statusTransaksi menjadi "LUNAS", cetak struk lengkap
+     * Memproses checkout transaksi dengan pembayaran tunai langsung.
      * 
      * @param uangDiterima nominal uang tunai yang diserahkan konsumen
      * @return true jika pembayaran sukses dan lunas
@@ -226,6 +247,20 @@ public class Transaksi {
      * @throws IllegalArgumentException jika nominal uang diserahkan <= 0
      */
     public boolean prosesTransaksi(double uangDiterima) throws KasirException {
+        PembayaranTunai strategiTunai = new PembayaranTunai();
+        return prosesTransaksi(strategiTunai, uangDiterima);
+    }
+
+    /**
+     * Memproses checkout transaksi menggunakan pola Strategy (MetodePembayaran).
+     * Mendukung PembayaranTunai, PembayaranQrisSimulasi, SplitPayment, atau custom strategy lainnya.
+     * 
+     * @param metode   strategi pembayaran yang digunakan
+     * @param nominal  nominal uang masuk/otorisasi
+     * @return true jika transaksi berhasil lunas
+     * @throws KasirException jika keranjang kosong, uang kurang, atau status bukan PENDING
+     */
+    public boolean prosesTransaksi(MetodePembayaran metode, double nominal) throws KasirException {
         // 1. Validasi Status Transaksi
         if (!"PENDING".equals(this.statusTransaksi)) {
             throw new StatusTransaksiInvalidException(this.idTransaksi, this.statusTransaksi, "prosesTransaksi");
@@ -236,30 +271,26 @@ public class Transaksi {
             throw new TransaksiKosongException(this.idTransaksi);
         }
 
-        // 3. Validasi Uang Masuk Positif
-        if (uangDiterima <= 0) {
-            throw new IllegalArgumentException("[ERROR VALIDASI] Nominal pembayaran harus lebih besar dari 0! (Diberikan: Rp " + uangDiterima + ")");
+        // 3. Validasi Strategi
+        if (metode == null) {
+            throw new IllegalArgumentException("[ERROR VALIDASI] Metode pembayaran tidak boleh null!");
         }
 
         double totalTagihan = hitungTotalBayar();
 
-        // 4. Validasi Kecukupan Uang Tunai (PembayaranKurangException)
-        if (uangDiterima < totalTagihan) {
-            // State transaksi dijamin TIDAK BERUBAH (tetap PENDING)
-            throw new PembayaranKurangException(this.idTransaksi, totalTagihan, uangDiterima);
-        }
+        // 4. Delegasi pemrosesan ke Strategy (Melempar PembayaranKurangException jika tidak cukup)
+        metode.bayar(totalTagihan, nominal);
 
-        // 5. Pembayaran Berhasil: Mutasi State ke "LUNAS"
+        // 5. Pembayaran Berhasil: Mutasi State ke "LUNAS" & Simpan Strategy
         this.statusTransaksi = "LUNAS";
-        double kembalian = uangDiterima - totalTagihan;
+        this.metodePembayaranTerpilih = metode;
 
         cetakHeaderStruk();
         cetakDaftarBelanja();
         cetakFooterStruk();
 
-        System.out.println("PEMBAYARAN TUNAI (CASH):");
-        System.out.printf("Tunai Diterima                             : Rp %,.0f\n", uangDiterima);
-        System.out.printf("Kembalian                                  : Rp %,.0f\n", kembalian);
+        System.out.println("METODE PEMBAYARAN: " + metode.getNamaMetode());
+        System.out.println("Rincian   : " + metode.getInformasiTransaksi());
         System.out.println("======================================================================");
         System.out.println("                 Status Pembayaran: LUNAS                             ");
         System.out.println("======================================================================");
@@ -269,6 +300,46 @@ public class Transaksi {
     }
 
     // --- HELPER METHODS UNTUK FORMATTING STRUK ---
+
+    public String generateTeksStruk() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("======================================================================\n");
+        sb.append("                         STRUK PENJUALAN TOKO                         \n");
+        sb.append("======================================================================\n");
+        sb.append("No. Transaksi : ").append(idTransaksi).append("\n");
+        sb.append("Tanggal       : ").append(tanggal).append("\n");
+        if (pelanggan != null) {
+            sb.append("Pelanggan     : ").append(pelanggan.getNama()).append(" (MEMBER-").append(pelanggan.getTipeMember()).append(")\n");
+        } else {
+            sb.append("Pelanggan     : UMUM (Non-Member)\n");
+        }
+        sb.append("Status        : ").append(statusTransaksi).append("\n");
+        sb.append("----------------------------------------------------------------------\n");
+        sb.append("DAFTAR BELANJAAN:\n");
+        int no = 1;
+        for (ItemTransaksi it : daftarItem) {
+            Produk p = it.getProduk();
+            String disc = (it.getDiskonItem() > 0.0) ? String.format(" [Disc %.0f%%]", it.getDiskonItem() * 100) : "";
+            sb.append(String.format("%d. %s - %s\n", no++, it.getNamaProduk(), disc));
+            sb.append(String.format("   %d x Rp %,d = Rp %,d\n", it.getJumlahBeli(), it.getHargaSatuan(), it.hitungSubtotal()));
+        }
+        sb.append("----------------------------------------------------------------------\n");
+        sb.append(String.format("Total Subtotal                             : Rp %,d\n", hitungTotalSubtotal()));
+        if (pelanggan != null && pelanggan.getDiskon() > 0.0) {
+            sb.append(String.format("Diskon Member (%s: %.0f%%)                  : Rp %,.0f\n",
+                    pelanggan.getTipeMember(), pelanggan.getDiskon() * 100, hitungDiskonNominal()));
+        }
+        sb.append("======================================================================\n");
+        sb.append(String.format("TOTAL AKHIR                                : Rp %,.0f\n", hitungTotalBayar()));
+        if (metodePembayaranTerpilih != null) {
+            sb.append("Pembayaran    : ").append(metodePembayaranTerpilih.getInformasiTransaksi()).append("\n");
+        }
+        sb.append("======================================================================\n");
+        sb.append("                 Status: ").append(statusTransaksi).append("\n");
+        sb.append("                 Terima Kasih Atas Kunjungan Anda!                    \n");
+        sb.append("======================================================================\n");
+        return sb.toString();
+    }
 
     private void cetakHeaderStruk() {
         System.out.println("======================================================================");

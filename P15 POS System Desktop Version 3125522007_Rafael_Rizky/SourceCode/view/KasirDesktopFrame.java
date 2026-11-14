@@ -44,19 +44,22 @@ public class KasirDesktopFrame extends JFrame {
     private JTable tabelKatalog;
     private JTable tabelKeranjang;
 
-    // Search & Filter
+    // Search & Filter & Barcode Wedge
     private JTextField txtCari;
+    private JTextField txtBarcodeScan;
 
     // Pelanggan & Transaksi Active State
     private JTextField txtNamaPelanggan;
     private JComboBox<String> cmbTipeMember;
     private transient Transaksi transaksiAktif;
 
-    // Financial Display Labels
+    // Financial & Payment Strategy Components
     private JLabel lblTotalKotor;
     private JLabel lblDiskonMember;
     private JLabel lblTotalTagihan;
+    private JComboBox<String> cmbMetodeBayar;
     private JTextField txtBayarTunai;
+    private JTextField txtNominalQris;
     private JLabel lblKembalian;
     private JLabel lblUserBadge;
 
@@ -280,7 +283,14 @@ public class KasirDesktopFrame extends JFrame {
         lblSection.setForeground(new Color(40, 60, 80));
 
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        txtCari = new JTextField(12);
+        searchPanel.add(new JLabel("Scan Barcode:"));
+        txtBarcodeScan = new JTextField(9);
+        txtBarcodeScan.setToolTipText("Arahkan scanner barcode atau ketik kode lalu tekan Enter");
+        txtBarcodeScan.addActionListener(e -> aksiScanBarcodeEnter());
+        searchPanel.add(txtBarcodeScan);
+
+        searchPanel.add(new JLabel("Cari:"));
+        txtCari = new JTextField(10);
         JButton btnCari = new JButton("Cari");
         JButton btnReset = new JButton("Reset");
 
@@ -393,10 +403,10 @@ public class KasirDesktopFrame extends JFrame {
         cartActions.add(btnResetTrx);
         bottomContainer.add(cartActions, BorderLayout.NORTH);
 
-        JPanel paymentPanel = new JPanel(new GridLayout(5, 2, 8, 6));
+        JPanel paymentPanel = new JPanel(new GridLayout(7, 2, 8, 5));
         paymentPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Rincian Pembayaran Kasir"),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+                BorderFactory.createTitledBorder("Rincian Pembayaran Kasir (Pola Strategy)"),
+                BorderFactory.createEmptyBorder(6, 12, 6, 12)
         ));
 
         lblTotalKotor = new JLabel("Rp 0");
@@ -405,9 +415,21 @@ public class KasirDesktopFrame extends JFrame {
         lblTotalTagihan.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTotalTagihan.setForeground(new Color(200, 35, 51));
 
+        cmbMetodeBayar = new JComboBox<>(new String[]{"TUNAI (CASH)", "QRIS (SIMULASI DINAMIS)", "SPLIT PAYMENT (TUNAI + QRIS)"});
+        cmbMetodeBayar.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        cmbMetodeBayar.addActionListener(e -> updateModePembayaran());
+
         txtBayarTunai = new JTextField();
-        txtBayarTunai.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        txtBayarTunai.setFont(new Font("Segoe UI", Font.BOLD, 13));
         txtBayarTunai.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) { hitungKembalianLive(); }
+        });
+
+        txtNominalQris = new JTextField();
+        txtNominalQris.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        txtNominalQris.setEnabled(false);
+        txtNominalQris.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) { hitungKembalianLive(); }
         });
@@ -421,8 +443,12 @@ public class KasirDesktopFrame extends JFrame {
         paymentPanel.add(lblDiskonMember);
         paymentPanel.add(new JLabel("TOTAL TAGIHAN AKHIR:"));
         paymentPanel.add(lblTotalTagihan);
-        paymentPanel.add(new JLabel("Uang Tunai Diterima (Rp):"));
+        paymentPanel.add(new JLabel("Metode Pembayaran:"));
+        paymentPanel.add(cmbMetodeBayar);
+        paymentPanel.add(new JLabel("Nominal Tunai (Rp):"));
         paymentPanel.add(txtBayarTunai);
+        paymentPanel.add(new JLabel("Nominal QRIS [Simulasi] (Rp):"));
+        paymentPanel.add(txtNominalQris);
         paymentPanel.add(new JLabel("Kembalian Konsumen:"));
         paymentPanel.add(lblKembalian);
 
@@ -446,13 +472,25 @@ public class KasirDesktopFrame extends JFrame {
             String infoKhusus = "";
             String kategori = (p instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
             if (p instanceof ProdukMakanan) {
-                infoKhusus = "Exp: " + ((ProdukMakanan) p).getTanggalKadaluarsa();
+                ProdukMakanan pm = (ProdukMakanan) p;
+                long sisaHari = pm.hitungSisaHari();
+                if (sisaHari < 0) {
+                    infoKhusus = "[KADALUARSA] " + pm.getTanggalKadaluarsa();
+                } else if (sisaHari <= 7) {
+                    infoKhusus = String.format("[EXP %d HR (Disc %.0f%%)] %s", sisaHari, pm.hitungDiskonKedaluwarsa() * 100, pm.getTanggalKadaluarsa());
+                } else {
+                    infoKhusus = "Exp: " + pm.getTanggalKadaluarsa();
+                }
             } else if (p instanceof ProdukElektronik) {
                 infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
             }
+            String labelStok = String.valueOf(p.getStok());
+            if (p.isStokMenipis()) {
+                labelStok = p.getStok() + " [MENIPIS]";
+            }
             modelKatalog.addRow(new Object[]{
                 p.getKode(), p.getNama(), kategori,
-                String.format("%,d", p.getHarga()), p.getStok(), infoKhusus
+                String.format("%,d", p.getHarga()), labelStok, infoKhusus
             });
         }
     }
@@ -464,11 +502,27 @@ public class KasirDesktopFrame extends JFrame {
         }
         modelKatalog.setRowCount(0);
         for (Produk p : katalog.cariProdukByNama(kw)) {
-            String infoKhusus = (p instanceof ProdukMakanan) ? "Exp: " + ((ProdukMakanan) p).getTanggalKadaluarsa()
-                    : "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
+            String infoKhusus = "";
+            if (p instanceof ProdukMakanan) {
+                ProdukMakanan pm = (ProdukMakanan) p;
+                long sisaHari = pm.hitungSisaHari();
+                if (sisaHari < 0) {
+                    infoKhusus = "[KADALUARSA] " + pm.getTanggalKadaluarsa();
+                } else if (sisaHari <= 7) {
+                    infoKhusus = String.format("[EXP %d HR (Disc %.0f%%)] %s", sisaHari, pm.hitungDiskonKedaluwarsa() * 100, pm.getTanggalKadaluarsa());
+                } else {
+                    infoKhusus = "Exp: " + pm.getTanggalKadaluarsa();
+                }
+            } else if (p instanceof ProdukElektronik) {
+                infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
+            }
+            String labelStok = String.valueOf(p.getStok());
+            if (p.isStokMenipis()) {
+                labelStok = p.getStok() + " [MENIPIS]";
+            }
             modelKatalog.addRow(new Object[]{
                 p.getKode(), p.getNama(), (p instanceof ProdukMakanan ? "Makanan" : "Elektronik"),
-                String.format("%,d", p.getHarga()), p.getStok(), infoKhusus
+                String.format("%,d", p.getHarga()), labelStok, infoKhusus
             });
         }
     }
@@ -530,6 +584,57 @@ public class KasirDesktopFrame extends JFrame {
         }
     }
 
+    private void updateModePembayaran() {
+        if (cmbMetodeBayar == null || transaksiAktif == null) return;
+        int idx = cmbMetodeBayar.getSelectedIndex();
+        double tagihan = transaksiAktif.hitungTotalBayar();
+        if (idx == 0) { // TUNAI
+            txtBayarTunai.setEnabled(true);
+            txtNominalQris.setEnabled(false);
+            txtNominalQris.setText("0");
+        } else if (idx == 1) { // QRIS
+            txtBayarTunai.setEnabled(false);
+            txtBayarTunai.setText("0");
+            txtNominalQris.setEnabled(true);
+            txtNominalQris.setText(String.format("%.0f", tagihan));
+        } else if (idx == 2) { // SPLIT
+            txtBayarTunai.setEnabled(true);
+            txtNominalQris.setEnabled(true);
+            double separuh = Math.floor(tagihan / 2);
+            txtBayarTunai.setText(String.format("%.0f", separuh));
+            txtNominalQris.setText(String.format("%.0f", tagihan - separuh));
+        }
+        hitungKembalianLive();
+    }
+
+    private void aksiScanBarcodeEnter() {
+        String barcode = txtBarcodeScan.getText().trim();
+        if (barcode.isEmpty()) return;
+
+        Produk p = katalog.cariProduk(barcode);
+        if (p == null) {
+            JOptionPane.showMessageDialog(this, 
+                "Produk dengan kode barcode '" + barcode + "' tidak ditemukan dalam katalog!", 
+                "Barcode Tidak Dikenal", JOptionPane.WARNING_MESSAGE);
+            txtBarcodeScan.selectAll();
+            txtBarcodeScan.requestFocus();
+            return;
+        }
+
+        try {
+            transaksiAktif.tambahItem(p, 1);
+            muatTabelKeranjang();
+            muatTabelKatalog();
+            updateKalkulasiFinansial();
+            txtBarcodeScan.setText("");
+            txtBarcodeScan.requestFocus();
+        } catch (KasirException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Ditolak Aturan Kasir", JOptionPane.ERROR_MESSAGE);
+            txtBarcodeScan.selectAll();
+            txtBarcodeScan.requestFocus();
+        }
+    }
+
     private void updateMemberDariCombo() {
         if (transaksiAktif == null) return;
         String sel = (String) cmbTipeMember.getSelectedItem();
@@ -551,26 +656,48 @@ public class KasirDesktopFrame extends JFrame {
     }
 
     private void hitungKembalianLive() {
-        if (txtBayarTunai == null || lblKembalian == null || transaksiAktif == null) return;
-        String str = txtBayarTunai.getText().trim();
-        if (str.isEmpty()) {
-            lblKembalian.setText("Rp 0");
-            lblKembalian.setForeground(Color.BLACK);
-            return;
-        }
+        if (lblKembalian == null || transaksiAktif == null) return;
+        double tagihan = transaksiAktif.hitungTotalBayar();
+        int modeIdx = (cmbMetodeBayar != null) ? cmbMetodeBayar.getSelectedIndex() : 0;
+
         try {
-            double bayar = Double.parseDouble(str);
-            double tagihan = transaksiAktif.hitungTotalBayar();
-            double kembalian = bayar - tagihan;
-            if (kembalian >= 0) {
-                lblKembalian.setText(String.format("Rp %,.0f", kembalian));
+            if (modeIdx == 0) { // TUNAI
+                String strTunai = (txtBayarTunai != null) ? txtBayarTunai.getText().trim() : "";
+                if (strTunai.isEmpty()) {
+                    lblKembalian.setText("Rp 0");
+                    lblKembalian.setForeground(Color.BLACK);
+                    return;
+                }
+                double bayar = Double.parseDouble(strTunai);
+                double kembalian = bayar - tagihan;
+                if (kembalian >= 0) {
+                    lblKembalian.setText(String.format("Rp %,.0f", kembalian));
+                    lblKembalian.setForeground(new Color(40, 167, 69));
+                } else {
+                    lblKembalian.setText(String.format("Kurang: Rp %,.0f", Math.abs(kembalian)));
+                    lblKembalian.setForeground(new Color(220, 53, 69));
+                }
+            } else if (modeIdx == 1) { // QRIS
+                lblKembalian.setText("Rp 0 (Pas via QRIS)");
                 lblKembalian.setForeground(new Color(40, 167, 69));
-            } else {
-                lblKembalian.setText(String.format("Kurang: Rp %,.0f", Math.abs(kembalian)));
-                lblKembalian.setForeground(new Color(220, 53, 69));
+            } else if (modeIdx == 2) { // SPLIT
+                String strTunai = (txtBayarTunai != null) ? txtBayarTunai.getText().trim() : "0";
+                String strQris = (txtNominalQris != null) ? txtNominalQris.getText().trim() : "0";
+                double tunai = strTunai.isEmpty() ? 0 : Double.parseDouble(strTunai);
+                double qris = strQris.isEmpty() ? 0 : Double.parseDouble(strQris);
+                double totalMasuk = tunai + qris;
+                double selisih = totalMasuk - tagihan;
+                if (selisih >= 0) {
+                    double kembalianTunai = Math.max(0, tunai - Math.max(0, tagihan - qris));
+                    lblKembalian.setText(String.format("Kembali Tunai: Rp %,.0f", kembalianTunai));
+                    lblKembalian.setForeground(new Color(40, 167, 69));
+                } else {
+                    lblKembalian.setText(String.format("Kombinasi Kurang: Rp %,.0f", Math.abs(selisih)));
+                    lblKembalian.setForeground(new Color(220, 53, 69));
+                }
             }
         } catch (NumberFormatException e) {
-            lblKembalian.setText("Angka tidak valid");
+            lblKembalian.setText("Nominal tidak valid");
             lblKembalian.setForeground(Color.RED);
         }
     }
@@ -581,23 +708,42 @@ public class KasirDesktopFrame extends JFrame {
             return;
         }
 
-        String inputTunai = txtBayarTunai.getText().trim();
-        if (inputTunai.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Masukkan jumlah uang tunai yang diserahkan konsumen!", "Validasi Pembayaran", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        int modeIdx = (cmbMetodeBayar != null) ? cmbMetodeBayar.getSelectedIndex() : 0;
+        MetodePembayaran strategi;
+        double nominalInput;
 
         try {
-            double bayar = Double.parseDouble(inputTunai);
-            double tagihan = transaksiAktif.hitungTotalBayar();
-            double kembalian = bayar - tagihan;
+            if (modeIdx == 0) { // TUNAI
+                String inputTunai = txtBayarTunai.getText().trim();
+                if (inputTunai.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Masukkan jumlah uang tunai yang diserahkan konsumen!", "Validasi Pembayaran", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                nominalInput = Double.parseDouble(inputTunai);
+                strategi = new PembayaranTunai();
+            } else if (modeIdx == 1) { // QRIS
+                String inputQris = txtNominalQris.getText().trim();
+                if (inputQris.isEmpty()) {
+                    nominalInput = transaksiAktif.hitungTotalBayar();
+                } else {
+                    nominalInput = Double.parseDouble(inputQris);
+                }
+                strategi = new PembayaranQrisSimulasi("NMID-SIM-" + System.currentTimeMillis());
+            } else { // SPLIT
+                String inputTunai = txtBayarTunai.getText().trim();
+                String inputQris = txtNominalQris.getText().trim();
+                double t = inputTunai.isEmpty() ? 0 : Double.parseDouble(inputTunai);
+                double q = inputQris.isEmpty() ? 0 : Double.parseDouble(inputQris);
+                nominalInput = t + q;
+                strategi = new SplitPayment(t, q);
+            }
 
-            boolean sukses = transaksiAktif.prosesTransaksi(bayar);
+            boolean sukses = transaksiAktif.prosesTransaksi(strategi, nominalInput);
             if (sukses) {
                 String namaKasir = (currentUser != null) ? currentUser.getUsername() : "system";
 
                 // 1. Catat ke berkas transaksi.txt (Format 9 kolom dengan nama kasir)
-                transaksiRepo.catatTransaksi(PATH_TRANSAKSI, transaksiAktif, bayar, kembalian, namaKasir);
+                transaksiRepo.catatTransaksi(PATH_TRANSAKSI, transaksiAktif, nominalInput, strategi.getKembalian(), namaKasir);
 
                 // 2. Simpan rincian per baris belanjaan ke data/transaksi_item.txt
                 try {
@@ -612,14 +758,14 @@ public class KasirDesktopFrame extends JFrame {
                 // 3. Simpan pengurangan stok ke berkas produk.txt via jalur aman
                 simpanKatalogAmanKeFile(PATH_PRODUK);
 
-                // Tampilkan Struk Pembayaran Modal
-                tampilkanDialogStruk(transaksiAktif, bayar, kembalian);
+                // Tampilkan Struk Pembayaran Modal dengan opsi Cetak & Ekspor
+                tampilkanDialogStruk(transaksiAktif, nominalInput, strategi.getKembalian(), strategi);
 
                 // Buat transaksi baru
                 mulaiTransaksiBaru();
             }
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Nominal pembayaran tunai tidak valid!", "Error Format", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Nominal pembayaran tidak valid!", "Error Format", JOptionPane.ERROR_MESSAGE);
         } catch (PembayaranKurangException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Uang Pembayaran Kurang", JOptionPane.ERROR_MESSAGE);
         } catch (KasirException e) {
@@ -629,9 +775,9 @@ public class KasirDesktopFrame extends JFrame {
         }
     }
 
-    private void tampilkanDialogStruk(Transaksi trx, double bayar, double kembalian) {
+    private void tampilkanDialogStruk(Transaksi trx, double nominalInput, double kembalian, MetodePembayaran metode) {
         JDialog dlg = new JDialog(this, "Struk Pembayaran Toko - " + trx.getIdTransaksi(), true);
-        dlg.setSize(480, 560);
+        dlg.setSize(520, 600);
         dlg.setLocationRelativeTo(this);
         dlg.setLayout(new BorderLayout());
 
@@ -639,41 +785,42 @@ public class KasirDesktopFrame extends JFrame {
         ta.setFont(new Font("Consolas", Font.PLAIN, 12));
         ta.setEditable(false);
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("====================================================\n");
-        sb.append("               STRUK PEMBAYARAN KASIR               \n");
-        sb.append("====================================================\n");
-        sb.append("ID Transaksi : ").append(trx.getIdTransaksi()).append("\n");
-        sb.append("Waktu        : ").append(trx.getTanggal()).append("\n");
-        sb.append("Kasir        : ").append(currentUser != null ? currentUser.getUsername() : "system").append("\n");
-        sb.append("Pelanggan    : ").append(trx.getPelanggan().getNama()).append("\n");
-        sb.append("Tipe Member  : ").append(trx.getPelanggan().getTipeMember()).append("\n");
-        sb.append("----------------------------------------------------\n");
-        sb.append("RINCIAN BARANG:\n");
-
-        int no = 1;
-        for (ItemTransaksi it : trx.getDaftarItem()) {
-            sb.append(String.format("%d. %s - %s\n", no++, it.getProduk().getKode(), it.getNamaProduk()));
-            sb.append(String.format("   %d unit x Rp %,d = Rp %,d\n", it.getJumlahBeli(), it.getHargaSatuan(), it.hitungSubtotal()));
-        }
-        sb.append("----------------------------------------------------\n");
-        sb.append(String.format("Total Pembelian      : Rp %,.0f\n", (double) trx.hitungTotalSubtotal()));
-        sb.append(String.format("Diskon Member (%s) : Rp %,.0f\n", trx.getPelanggan().getTipeMember(), trx.hitungDiskonNominal()));
-        sb.append("====================================================\n");
-        sb.append(String.format("TOTAL TAGIHAN AKHIR  : Rp %,.0f\n", trx.hitungTotalBayar()));
-        sb.append("====================================================\n");
-        sb.append(String.format("Tunai Diterima       : Rp %,.0f\n", bayar));
-        sb.append(String.format("Kembalian Konsumen   : Rp %,.0f\n", kembalian));
-        sb.append("====================================================\n");
-        sb.append("    Terima kasih atas kunjungan Anda di gerai kami! \n");
-        sb.append("====================================================\n");
-
-        ta.setText(sb.toString());
+        String teksStruk = trx.generateTeksStruk();
+        ta.setText(teksStruk);
         dlg.add(new JScrollPane(ta), BorderLayout.CENTER);
 
+        JPanel pnlAksiStruk = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        JButton btnCetakKertas = new JButton("🖨️ Cetak ke Printer");
+        JButton btnEksporFile = new JButton("💾 Simpan Berkas Teks");
         JButton btnTutup = new JButton("Selesai / Tutup");
+
+        btnCetakKertas.addActionListener(e -> {
+            try {
+                boolean selesai = ta.print();
+                if (selesai) {
+                    JOptionPane.showMessageDialog(dlg, "Pencetakan struk selesai!", "Printer POS", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (Exception exPrint) {
+                JOptionPane.showMessageDialog(dlg, "Pencetakan gagal / dibatalkan: " + exPrint.getMessage(), "Printer Status", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        btnEksporFile.addActionListener(e -> {
+            try {
+                Path strukPath = Paths.get("data", "struk_" + trx.getIdTransaksi() + ".txt");
+                java.nio.file.Files.write(strukPath, teksStruk.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                JOptionPane.showMessageDialog(dlg, "Struk tersimpan di: " + strukPath.toAbsolutePath(), "Ekspor Struk Sukses", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException exIo) {
+                JOptionPane.showMessageDialog(dlg, "Gagal menyimpan struk: " + exIo.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
         btnTutup.addActionListener(e -> dlg.dispose());
-        dlg.add(btnTutup, BorderLayout.SOUTH);
+
+        pnlAksiStruk.add(btnCetakKertas);
+        pnlAksiStruk.add(btnEksporFile);
+        pnlAksiStruk.add(btnTutup);
+        dlg.add(pnlAksiStruk, BorderLayout.SOUTH);
 
         dlg.setVisible(true);
     }
