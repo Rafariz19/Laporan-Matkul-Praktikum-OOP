@@ -9,11 +9,13 @@ import java.awt.event.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
  * KasirDesktopFrame - Modern Swing Graphical User Interface (GUI)
- * Sistem Kasir Sederhana (Point of Sale) Versi Desktop
+ * Sistem Kasir Sederhana (Point of Sale) Versi Desktop (Fase 1: Multi-role, Item Log, Laporan & VOID)
  * 
  * Mahasiswa : Rafael Rizky Luga Tanjung (NRP: 3125522007)
  * Dosen     : Nirwana Haidar Hari, S.Pd., M.Kom.
@@ -24,10 +26,17 @@ public class KasirDesktopFrame extends JFrame {
 
     private static final Path PATH_PRODUK = Paths.get("data/produk.txt");
     private static final Path PATH_TRANSAKSI = Paths.get("data/transaksi.txt");
+    private static final Path PATH_TRANSAKSI_ITEM = Paths.get("data/transaksi_item.txt");
+    private static final Path PATH_USERS = Paths.get("data/users.txt");
 
     private final transient KatalogProduk katalog;
     private final transient ProdukFileRepository produkRepo;
     private final transient TransaksiFileRepository transaksiRepo;
+    private final transient TransaksiItemRepository transaksiItemRepo;
+    private final transient AuthService authService;
+
+    // Sesi Pengguna Aktif
+    private transient User currentUser;
 
     // GUI Components - Table Models
     private DefaultTableModel modelKatalog;
@@ -49,6 +58,7 @@ public class KasirDesktopFrame extends JFrame {
     private JLabel lblTotalTagihan;
     private JTextField txtBayarTunai;
     private JLabel lblKembalian;
+    private JLabel lblUserBadge;
 
     @SuppressWarnings("this-escape")
     public KasirDesktopFrame() {
@@ -56,8 +66,11 @@ public class KasirDesktopFrame extends JFrame {
         this.katalog = new KatalogProduk();
         this.produkRepo = new ProdukFileRepository();
         this.transaksiRepo = new TransaksiFileRepository();
+        this.transaksiItemRepo = new TransaksiItemRepository();
+        this.authService = new AuthService(PATH_USERS);
 
         initData();
+        prosesLoginAwal();
         initUI();
         mulaiTransaksiBaru();
     }
@@ -66,8 +79,7 @@ public class KasirDesktopFrame extends JFrame {
         try {
             produkRepo.muat(PATH_PRODUK, katalog);
         } catch (Exception e) {
-            System.err.println("Inisialisasi berkas: " + e.getMessage());
-            // Isi default awal jika berkas kosong
+            System.err.println("Inisialisasi berkas katalog: " + e.getMessage());
             if (katalog.isKosong()) {
                 katalog.tambahProduk(new ProdukMakanan("MK01", "Roti Bakar Keju", 15000, 25, "2026-12-31"));
                 katalog.tambahProduk(new ProdukMakanan("MK02", "Susu UHT Coklat 250ml", 8500, 40, "2026-10-15"));
@@ -80,6 +92,56 @@ public class KasirDesktopFrame extends JFrame {
         }
     }
 
+    private void prosesLoginAwal() {
+        if (authService.isUsersFileEmpty()) {
+            JPasswordField pwdAdmin = new JPasswordField(15);
+            JPanel pnl = new JPanel(new GridLayout(3, 1, 5, 5));
+            pnl.add(new JLabel("First-Run Setup: Berkas data/users.txt belum memiliki akun."));
+            pnl.add(new JLabel("Buat Password untuk Akun Administrator ('admin'):"));
+            pnl.add(pwdAdmin);
+
+            int opt = JOptionPane.showConfirmDialog(null, pnl, "Setup Akun Administrator", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            String pwdStr = new String(pwdAdmin.getPassword()).trim();
+            if (opt != JOptionPane.OK_OPTION || pwdStr.isEmpty()) {
+                pwdStr = "admin123";
+            }
+            try {
+                authService.inisialisasiAdminAwal(pwdStr);
+                authService.register("kasir", "kasir123", Role.KASIR);
+            } catch (Exception ex) {
+                System.err.println("Gagal setup admin awal: " + ex.getMessage());
+            }
+        }
+
+        boolean sukses = false;
+        while (!sukses) {
+            JTextField txtUser = new JTextField("admin", 15);
+            JPasswordField txtPass = new JPasswordField(15);
+            JPanel pnlLogin = new JPanel(new GridLayout(4, 1, 5, 5));
+            pnlLogin.add(new JLabel("Username:"));
+            pnlLogin.add(txtUser);
+            pnlLogin.add(new JLabel("Password:"));
+            pnlLogin.add(txtPass);
+
+            int opt = JOptionPane.showConfirmDialog(null, pnlLogin, "Login Sistem Kasir POS", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            if (opt != JOptionPane.OK_OPTION) {
+                System.exit(0);
+            }
+
+            try {
+                this.currentUser = authService.login(txtUser.getText(), new String(txtPass.getPassword()));
+                sukses = true;
+            } catch (KasirException e) {
+                JOptionPane.showMessageDialog(null, e.getMessage(), "Gagal Otentikasi", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+
+        if (lblUserBadge != null) {
+            lblUserBadge.setText(currentUser.getUsername() + " [" + currentUser.getRole() + "]");
+        }
+        setTitle("Sistem Kasir POS - " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
+    }
+
     private void mulaiTransaksiBaru() {
         String nama = (txtNamaPelanggan != null && !txtNamaPelanggan.getText().trim().isEmpty()) 
                       ? txtNamaPelanggan.getText().trim() : "Pelanggan Umum";
@@ -90,25 +152,14 @@ public class KasirDesktopFrame extends JFrame {
             else if (rawMember.contains("GOLD")) member = "GOLD";
         }
 
-        // Pulihkan stok item jika transaksi sebelumnya berstatus PENDING dan di-reset
-        if (this.transaksiAktif != null && "PENDING".equals(this.transaksiAktif.getStatusTransaksi())) {
-            try {
-                this.transaksiAktif.batalkanTransaksi();
-            } catch (KasirException ignored) {}
-        }
+        String autoId = "TRX-" + System.currentTimeMillis();
+        String tgl = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+        Pelanggan p = new Pelanggan("CUST-" + (System.currentTimeMillis() % 1000), nama, "081234567890", member);
 
-        String idTrx = "TRX-" + (System.currentTimeMillis() % 1000000);
-        Pelanggan cust = new Pelanggan("CUST-" + idTrx, nama, "081234567890", member);
-        this.transaksiAktif = new Transaksi(idTrx, "09-11-2026 14:00", cust);
+        this.transaksiAktif = new Transaksi(autoId, tgl, p);
 
         if (modelKeranjang != null) {
             modelKeranjang.setRowCount(0);
-        }
-        if (modelKatalog != null) {
-            muatTabelKatalog();
-        }
-        if (txtBayarTunai != null) {
-            txtBayarTunai.setText("");
         }
         updateKalkulasiFinansial();
     }
@@ -143,30 +194,67 @@ public class KasirDesktopFrame extends JFrame {
                 System.exit(0);
             }
         });
-        setSize(1180, 720);
+        setSize(1240, 740);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
 
-        // 1. HEADER PANEL
+        // 1. HEADER PANEL DENGAN ROLE INDICATOR & MENU ADMIN
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(27, 54, 93));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-        JLabel lblTitle = new JLabel("SISTEM KASIR SEDERHANA (POINT OF SALE) - VERSI DESKTOP");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        JPanel headerLeft = new JPanel(new GridLayout(2, 1));
+        headerLeft.setOpaque(false);
+        JLabel lblTitle = new JLabel("SISTEM KASIR POINT OF SALE (POS DESKTOP)");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblTitle.setForeground(Color.WHITE);
 
         JLabel lblSub = new JLabel("PBO 2026 | Rafael Rizky Luga Tanjung (NRP: 3125522007) | PENS PSDKU Sumenep");
-        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblSub.setForeground(new Color(200, 220, 255));
+        headerLeft.add(lblTitle);
+        headerLeft.add(lblSub);
 
-        headerPanel.add(lblTitle, BorderLayout.WEST);
-        headerPanel.add(lblSub, BorderLayout.EAST);
+        JPanel headerRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 2));
+        headerRight.setOpaque(false);
+
+        lblUserBadge = new JLabel(currentUser.getUsername() + " [" + currentUser.getRole() + "]");
+        lblUserBadge.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblUserBadge.setForeground(new Color(255, 230, 100));
+
+        JButton btnLaporan = new JButton("📊 Laporan Harian");
+        btnLaporan.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnLaporan.setBackground(new Color(52, 152, 219));
+        btnLaporan.setForeground(Color.WHITE);
+        btnLaporan.addActionListener(e -> aksiBukaLaporanHarian());
+
+        JButton btnRiwayatVoid = new JButton("📜 Riwayat / VOID");
+        btnRiwayatVoid.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnRiwayatVoid.setBackground(new Color(230, 126, 34));
+        btnRiwayatVoid.setForeground(Color.WHITE);
+        btnRiwayatVoid.addActionListener(e -> aksiBukaRiwayatVoid());
+
+        JButton btnGantiAkun = new JButton("👤 Ganti Akun");
+        btnGantiAkun.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnGantiAkun.addActionListener(e -> {
+            prosesLoginAwal();
+            muatTabelKatalog();
+        });
+
+        headerRight.add(new JLabel("Petugas: "));
+        headerRight.getComponent(0).setForeground(Color.WHITE);
+        headerRight.add(lblUserBadge);
+        headerRight.add(btnLaporan);
+        headerRight.add(btnRiwayatVoid);
+        headerRight.add(btnGantiAkun);
+
+        headerPanel.add(headerLeft, BorderLayout.WEST);
+        headerPanel.add(headerRight, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // 2. MAIN SPLIT PANEL (Kiri: Katalog, Kanan: Keranjang)
+        // 2. MAIN SPLIT PANEL (Katalog vs Keranjang)
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buatPanelKatalog(), buatPanelKeranjang());
-        splitPane.setDividerLocation(600);
+        splitPane.setDividerLocation(620);
         splitPane.setResizeWeight(0.5);
         add(splitPane, BorderLayout.CENTER);
 
@@ -175,7 +263,7 @@ public class KasirDesktopFrame extends JFrame {
         footerPanel.setBackground(new Color(240, 243, 246));
         footerPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(200, 205, 210)));
 
-        JLabel lblStatus = new JLabel("Status Sistem: Terhubung ke file data/produk.txt | Siap melayani transaksi.");
+        JLabel lblStatus = new JLabel("Status Sistem: Multi-role aktif (Admin/Kasir) | Terhubung ke data/produk.txt & data/transaksi_item.txt.");
         lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblStatus.setForeground(new Color(80, 90, 100));
         footerPanel.add(lblStatus);
@@ -186,16 +274,14 @@ public class KasirDesktopFrame extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 5));
 
-        // Header Katalog & Filter Search
         JPanel topPanel = new JPanel(new BorderLayout(5, 5));
-        JLabel lblSection = new JLabel("Katalog Inventaris Produk");
+        JLabel lblSection = new JLabel("KATALOG INVENTARIS PRODUK");
         lblSection.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblSection.setForeground(new Color(27, 54, 93));
+        lblSection.setForeground(new Color(40, 60, 80));
 
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        searchPanel.add(new JLabel("Cari (Kode/Nama):"));
-        txtCari = new JTextField(15);
-        JButton btnCari = new JButton("Filter");
+        txtCari = new JTextField(12);
+        JButton btnCari = new JButton("Cari");
         JButton btnReset = new JButton("Reset");
 
         btnCari.addActionListener(e -> filterKatalog(txtCari.getText()));
@@ -210,7 +296,6 @@ public class KasirDesktopFrame extends JFrame {
         topPanel.add(searchPanel, BorderLayout.EAST);
         panel.add(topPanel, BorderLayout.NORTH);
 
-        // Table Katalog
         String[] cols = {"Kode", "Nama Produk", "Kategori", "Harga (Rp)", "Stok", "Info Khusus"};
         modelKatalog = new DefaultTableModel(cols, 0) {
             private static final long serialVersionUID = 1L;
@@ -226,7 +311,6 @@ public class KasirDesktopFrame extends JFrame {
 
         panel.add(new JScrollPane(tabelKatalog), BorderLayout.CENTER);
 
-        // Button Toolbar Bawah Katalog
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
         JButton btnTambahKeranjang = new JButton("+ Tambah ke Keranjang");
         btnTambahKeranjang.setBackground(new Color(40, 167, 69));
@@ -262,22 +346,20 @@ public class KasirDesktopFrame extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 10));
 
-        // Info Pelanggan
-        JPanel infoPelangganPanel = new JPanel(new GridLayout(2, 2, 5, 5));
-        infoPelangganPanel.setBorder(BorderFactory.createTitledBorder("Informasi Konsumen & Membership"));
+        JPanel customerPanel = new JPanel(new GridLayout(2, 2, 8, 6));
+        customerPanel.setBorder(BorderFactory.createTitledBorder("Informasi Konsumen & Member"));
 
-        infoPelangganPanel.add(new JLabel("Nama Pelanggan:"));
-        txtNamaPelanggan = new JTextField("Rafael Rizky");
-        infoPelangganPanel.add(txtNamaPelanggan);
+        customerPanel.add(new JLabel("Nama Pelanggan:"));
+        txtNamaPelanggan = new JTextField("Pelanggan Umum");
+        customerPanel.add(txtNamaPelanggan);
 
-        infoPelangganPanel.add(new JLabel("Tipe Membership:"));
-        cmbTipeMember = new JComboBox<>(new String[]{"VIP (Diskon 15%)", "GOLD (Diskon 10%)", "REGULER (Diskon 0%)"});
+        customerPanel.add(new JLabel("Tipe Membership:"));
+        cmbTipeMember = new JComboBox<>(new String[]{"REGULER (Diskon 0%)", "GOLD (Diskon 10%)", "VIP (Diskon 15%)"});
         cmbTipeMember.addActionListener(e -> updateMemberDariCombo());
-        infoPelangganPanel.add(cmbTipeMember);
+        customerPanel.add(cmbTipeMember);
 
-        panel.add(infoPelangganPanel, BorderLayout.NORTH);
+        panel.add(customerPanel, BorderLayout.NORTH);
 
-        // Table Keranjang
         String[] cols = {"Kode", "Nama Produk", "Qty", "Diskon Item", "Subtotal (Rp)"};
         modelKeranjang = new DefaultTableModel(cols, 0) {
             private static final long serialVersionUID = 1L;
@@ -289,77 +371,88 @@ public class KasirDesktopFrame extends JFrame {
         tabelKeranjang.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tabelKeranjang.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
-        centerPanel.add(new JScrollPane(tabelKeranjang), BorderLayout.CENTER);
+        panel.add(new JScrollPane(tabelKeranjang), BorderLayout.CENTER);
 
-        JButton btnHapusItem = new JButton("Batalkan / Hapus Baris Item Terpilih");
+        JPanel bottomContainer = new JPanel(new BorderLayout(5, 5));
+
+        JPanel cartActions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton btnHapusItem = new JButton("Batalkan Item Terpilih");
+        JButton btnResetTrx = new JButton("Reset Transaksi");
+
         btnHapusItem.addActionListener(e -> aksiBatalkanItemKeranjang());
-        centerPanel.add(btnHapusItem, BorderLayout.SOUTH);
+        btnResetTrx.addActionListener(e -> {
+            if (transaksiAktif != null) {
+                try {
+                    transaksiAktif.batalkanTransaksi();
+                } catch (Exception ignored) {}
+            }
+            mulaiTransaksiBaru();
+            muatTabelKatalog();
+        });
+        cartActions.add(btnHapusItem);
+        cartActions.add(btnResetTrx);
+        bottomContainer.add(cartActions, BorderLayout.NORTH);
 
-        panel.add(centerPanel, BorderLayout.CENTER);
+        JPanel paymentPanel = new JPanel(new GridLayout(5, 2, 8, 6));
+        paymentPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Rincian Pembayaran Kasir"),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
 
-        // Checkout & Payment Panel
-        JPanel paymentPanel = new JPanel(new GridLayout(6, 2, 6, 6));
-        paymentPanel.setBorder(BorderFactory.createTitledBorder("Rincian Pembayaran Kasir"));
-
-        paymentPanel.add(new JLabel("Total Pembelian (Gross):"));
         lblTotalKotor = new JLabel("Rp 0");
-        lblTotalKotor.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        paymentPanel.add(lblTotalKotor);
-
-        paymentPanel.add(new JLabel("Potongan Diskon Member:"));
         lblDiskonMember = new JLabel("Rp 0");
-        lblDiskonMember.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblDiskonMember.setForeground(new Color(220, 53, 69));
-        paymentPanel.add(lblDiskonMember);
-
-        paymentPanel.add(new JLabel("TOTAL AKHIR TAGIHAN:"));
         lblTotalTagihan = new JLabel("Rp 0");
         lblTotalTagihan.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTotalTagihan.setForeground(new Color(40, 167, 69));
-        paymentPanel.add(lblTotalTagihan);
+        lblTotalTagihan.setForeground(new Color(200, 35, 51));
 
-        paymentPanel.add(new JLabel("Uang Tunai Diterima (Rp):"));
         txtBayarTunai = new JTextField();
         txtBayarTunai.setFont(new Font("Segoe UI", Font.BOLD, 14));
         txtBayarTunai.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(KeyEvent e) {
-                hitungKembalianLive();
-            }
+            public void keyReleased(KeyEvent e) { hitungKembalianLive(); }
         });
-        paymentPanel.add(txtBayarTunai);
 
-        paymentPanel.add(new JLabel("Kembalian:"));
         lblKembalian = new JLabel("Rp 0");
         lblKembalian.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+        paymentPanel.add(new JLabel("Total Pembelian Kotor:"));
+        paymentPanel.add(lblTotalKotor);
+        paymentPanel.add(new JLabel("Potongan Diskon Member:"));
+        paymentPanel.add(lblDiskonMember);
+        paymentPanel.add(new JLabel("TOTAL TAGIHAN AKHIR:"));
+        paymentPanel.add(lblTotalTagihan);
+        paymentPanel.add(new JLabel("Uang Tunai Diterima (Rp):"));
+        paymentPanel.add(txtBayarTunai);
+        paymentPanel.add(new JLabel("Kembalian Konsumen:"));
         paymentPanel.add(lblKembalian);
 
-        JButton btnProsesBayar = new JButton("BAYAR & CETAK STRUK");
-        btnProsesBayar.setBackground(new Color(27, 54, 93));
-        btnProsesBayar.setForeground(Color.WHITE);
-        btnProsesBayar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnProsesBayar.addActionListener(e -> aksiProsesPembayaran());
+        bottomContainer.add(paymentPanel, BorderLayout.CENTER);
 
-        JButton btnResetTrx = new JButton("Reset Transaksi");
-        btnResetTrx.addActionListener(e -> mulaiTransaksiBaru());
+        JButton btnBayar = new JButton("BAYAR & PROSES CHECKOUT");
+        btnBayar.setBackground(new Color(40, 167, 69));
+        btnBayar.setForeground(Color.WHITE);
+        btnBayar.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnBayar.setPreferredSize(new Dimension(0, 42));
+        btnBayar.addActionListener(e -> aksiProsesPembayaran());
+        bottomContainer.add(btnBayar, BorderLayout.SOUTH);
 
-        paymentPanel.add(btnProsesBayar);
-        paymentPanel.add(btnResetTrx);
-
-        panel.add(paymentPanel, BorderLayout.SOUTH);
-
+        panel.add(bottomContainer, BorderLayout.SOUTH);
         return panel;
     }
 
     private void muatTabelKatalog() {
         modelKatalog.setRowCount(0);
         for (Produk p : katalog.getDaftarProdukReadOnly()) {
-            String kat = (p instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
-            String extra = (p instanceof ProdukMakanan) ? "Exp: " + ((ProdukMakanan) p).getTanggalKadaluarsa() 
-                           : "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " Bln";
+            String infoKhusus = "";
+            String kategori = (p instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
+            if (p instanceof ProdukMakanan) {
+                infoKhusus = "Exp: " + ((ProdukMakanan) p).getTanggalKadaluarsa();
+            } else if (p instanceof ProdukElektronik) {
+                infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
+            }
             modelKatalog.addRow(new Object[]{
-                p.getKode(), p.getNama(), kat, String.format("%,d", p.getHarga()), p.getStok(), extra
+                p.getKode(), p.getNama(), kategori,
+                String.format("%,d", p.getHarga()), p.getStok(), infoKhusus
             });
         }
     }
@@ -370,22 +463,20 @@ public class KasirDesktopFrame extends JFrame {
             return;
         }
         modelKatalog.setRowCount(0);
-        for (Produk p : katalog.getDaftarProdukReadOnly()) {
-            if (p.getKode().toLowerCase().contains(kw.toLowerCase()) || p.getNama().toLowerCase().contains(kw.toLowerCase())) {
-                String kat = (p instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
-                String extra = (p instanceof ProdukMakanan) ? "Exp: " + ((ProdukMakanan) p).getTanggalKadaluarsa() 
-                               : "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " Bln";
-                modelKatalog.addRow(new Object[]{
-                    p.getKode(), p.getNama(), kat, String.format("%,d", p.getHarga()), p.getStok(), extra
-                });
-            }
+        for (Produk p : katalog.cariProdukByNama(kw)) {
+            String infoKhusus = (p instanceof ProdukMakanan) ? "Exp: " + ((ProdukMakanan) p).getTanggalKadaluarsa()
+                    : "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
+            modelKatalog.addRow(new Object[]{
+                p.getKode(), p.getNama(), (p instanceof ProdukMakanan ? "Makanan" : "Elektronik"),
+                String.format("%,d", p.getHarga()), p.getStok(), infoKhusus
+            });
         }
     }
 
     private void aksiTambahKeKeranjang() {
         int row = tabelKatalog.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Silakan pilih produk dari tabel katalog terlebih dahulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Pilih produk pada tabel katalog terlebih dahulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -398,12 +489,8 @@ public class KasirDesktopFrame extends JFrame {
 
         try {
             int qty = Integer.parseInt(inputQty.trim());
-            // Tambahkan ke transaksi
             transaksiAktif.tambahItem(prod, qty);
-
-            // Perbarui tabel keranjang
             muatTabelKeranjang();
-            // Perbarui sisa stok di katalog tabel
             muatTabelKatalog();
             updateKalkulasiFinansial();
         } catch (NumberFormatException e) {
@@ -418,7 +505,7 @@ public class KasirDesktopFrame extends JFrame {
         for (ItemTransaksi item : transaksiAktif.getDaftarItem()) {
             modelKeranjang.addRow(new Object[]{
                 item.getProduk().getKode(),
-                item.getProduk().getNama(),
+                item.getNamaProduk(),
                 item.getJumlahBeli(),
                 (item.getDiskonItem() > 0 ? String.format("%.0f%%", item.getDiskonItem() * 100) : "-"),
                 String.format("%,d", item.hitungSubtotal())
@@ -447,23 +534,19 @@ public class KasirDesktopFrame extends JFrame {
         if (transaksiAktif == null) return;
         String sel = (String) cmbTipeMember.getSelectedItem();
         String member = "REGULER";
-        if (sel.contains("VIP")) member = "VIP";
-        else if (sel.contains("GOLD")) member = "GOLD";
-
+        if (sel != null) {
+            if (sel.contains("VIP")) member = "VIP";
+            else if (sel.contains("GOLD")) member = "GOLD";
+        }
         transaksiAktif.getPelanggan().ubahTipeMember(member);
         updateKalkulasiFinansial();
     }
 
     private void updateKalkulasiFinansial() {
         if (transaksiAktif == null) return;
-        double subtotal = transaksiAktif.hitungTotalSubtotal();
-        double diskon = transaksiAktif.hitungDiskonNominal();
-        double totalAkhir = transaksiAktif.hitungTotalBayar();
-
-        lblTotalKotor.setText(String.format("Rp %,.0f", subtotal));
-        lblDiskonMember.setText(String.format("Rp %,.0f", diskon));
-        lblTotalTagihan.setText(String.format("Rp %,.0f", totalAkhir));
-
+        lblTotalKotor.setText(String.format("Rp %,d", transaksiAktif.hitungTotalSubtotal()));
+        lblDiskonMember.setText(String.format("Rp %,.0f", transaksiAktif.hitungDiskonNominal()));
+        lblTotalTagihan.setText(String.format("Rp %,.0f", transaksiAktif.hitungTotalBayar()));
         hitungKembalianLive();
     }
 
@@ -511,9 +594,22 @@ public class KasirDesktopFrame extends JFrame {
 
             boolean sukses = transaksiAktif.prosesTransaksi(bayar);
             if (sukses) {
-                // Catat ke berkas transaksi.txt
-                transaksiRepo.catatTransaksi(PATH_TRANSAKSI, transaksiAktif, bayar, kembalian);
-                // Simpan pengurangan stok ke berkas produk.txt via jalur aman
+                String namaKasir = (currentUser != null) ? currentUser.getUsername() : "system";
+
+                // 1. Catat ke berkas transaksi.txt (Format 9 kolom dengan nama kasir)
+                transaksiRepo.catatTransaksi(PATH_TRANSAKSI, transaksiAktif, bayar, kembalian, namaKasir);
+
+                // 2. Simpan rincian per baris belanjaan ke data/transaksi_item.txt
+                try {
+                    transaksiItemRepo.simpanItemTransaksi(PATH_TRANSAKSI_ITEM, transaksiAktif);
+                } catch (IOException exItem) {
+                    System.err.println("[RISIKO NON-ACID] Gagal menulis transaksi_item.txt: " + exItem.getMessage());
+                    JOptionPane.showMessageDialog(this, 
+                        "Nota berhasil dibukukan, namun rincian item ke transaksi_item.txt gagal disimpan:\n" + exItem.getMessage(), 
+                        "Peringatan I/O Item", JOptionPane.WARNING_MESSAGE);
+                }
+
+                // 3. Simpan pengurangan stok ke berkas produk.txt via jalur aman
                 simpanKatalogAmanKeFile(PATH_PRODUK);
 
                 // Tampilkan Struk Pembayaran Modal
@@ -540,25 +636,25 @@ public class KasirDesktopFrame extends JFrame {
         dlg.setLayout(new BorderLayout());
 
         JTextArea ta = new JTextArea();
-        ta.setEditable(false);
         ta.setFont(new Font("Consolas", Font.PLAIN, 12));
-        ta.setBackground(new Color(252, 252, 248));
+        ta.setEditable(false);
 
         StringBuilder sb = new StringBuilder();
         sb.append("====================================================\n");
-        sb.append("            STRUK PEMBELIAN KASIR RESMI            \n");
-        sb.append("         TOKO RETAIL RAFAEL RIZKY (PBO 2026)        \n");
+        sb.append("               STRUK PEMBAYARAN KASIR               \n");
         sb.append("====================================================\n");
-        sb.append(String.format("No. Nota  : %s\n", trx.getIdTransaksi()));
-        sb.append(String.format("Tanggal   : %s\n", trx.getTanggal()));
-        sb.append(String.format("Pelanggan : %s (%s)\n", trx.getPelanggan().getNama(), trx.getPelanggan().getTipeMember()));
-        sb.append(String.format("Status    : %s\n", trx.getStatusTransaksi()));
+        sb.append("ID Transaksi : ").append(trx.getIdTransaksi()).append("\n");
+        sb.append("Waktu        : ").append(trx.getTanggal()).append("\n");
+        sb.append("Kasir        : ").append(currentUser != null ? currentUser.getUsername() : "system").append("\n");
+        sb.append("Pelanggan    : ").append(trx.getPelanggan().getNama()).append("\n");
+        sb.append("Tipe Member  : ").append(trx.getPelanggan().getTipeMember()).append("\n");
         sb.append("----------------------------------------------------\n");
         sb.append("RINCIAN BARANG:\n");
+
         int no = 1;
         for (ItemTransaksi it : trx.getDaftarItem()) {
-            sb.append(String.format("%d. %s - %s\n", no++, it.getProduk().getKode(), it.getProduk().getNama()));
-            sb.append(String.format("   %d unit x Rp %,d = Rp %,d\n", it.getJumlahBeli(), it.getProduk().getHarga(), it.hitungSubtotal()));
+            sb.append(String.format("%d. %s - %s\n", no++, it.getProduk().getKode(), it.getNamaProduk()));
+            sb.append(String.format("   %d unit x Rp %,d = Rp %,d\n", it.getJumlahBeli(), it.getHargaSatuan(), it.hitungSubtotal()));
         }
         sb.append("----------------------------------------------------\n");
         sb.append(String.format("Total Pembelian      : Rp %,.0f\n", (double) trx.hitungTotalSubtotal()));
@@ -582,10 +678,14 @@ public class KasirDesktopFrame extends JFrame {
         dlg.setVisible(true);
     }
 
-    /**
-     * Dialog interaktif untuk mengubah / mengedit data produk yang dipilih di tabel katalog.
-     */
     private void aksiBukaDialogEditProduk() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Edit Data Produk");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Terbatas", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         int selectedRow = tabelKatalog.getSelectedRow();
         if (selectedRow < 0) {
             JOptionPane.showMessageDialog(this, 
@@ -611,46 +711,50 @@ public class KasirDesktopFrame extends JFrame {
         txtKode.setEditable(false);
         txtKode.setBackground(new Color(240, 240, 240));
 
-        // Periksa apakah produk sedang aktif di keranjang belanja lewat method model Transaksi
         final boolean sedangDiKeranjang = (transaksiAktif != null && transaksiAktif.adaProdukAktif(kode));
         final int qtyDiKeranjang = (transaksiAktif != null ? transaksiAktif.getKuantitasItemAktif(kode) : 0);
 
         JTextField txtNama = new JTextField(p.getNama());
         JTextField txtHarga = new JTextField(String.valueOf(p.getHarga()));
         JTextField txtStok = new JTextField(String.valueOf(p.getStok()));
+
         if (sedangDiKeranjang) {
             txtStok.setEditable(false);
             txtStok.setBackground(new Color(240, 240, 240));
-            txtStok.setToolTipText("Stok terkunci karena sedang ada " + qtyDiKeranjang + " unit di keranjang belanja aktif.");
+            txtStok.setToolTipText("Stok dikunci: Terdapat " + qtyDiKeranjang + " unit produk ini di keranjang belanja aktif.");
         }
 
         JLabel lblExtra;
         JTextField txtExtra;
+
         if (p instanceof ProdukMakanan) {
-            lblExtra = new JLabel("Tanggal Exp (YYYY-MM-DD):");
+            lblExtra = new JLabel("Tgl Kadaluarsa (DD-MM-YYYY):");
             txtExtra = new JTextField(((ProdukMakanan) p).getTanggalKadaluarsa());
-        } else if (p instanceof ProdukElektronik) {
-            lblExtra = new JLabel("Masa Garansi (Bulan):");
-            txtExtra = new JTextField(String.valueOf(((ProdukElektronik) p).getGaransiBulan()));
         } else {
-            lblExtra = new JLabel("Info Khusus:");
-            txtExtra = new JTextField("-");
-            txtExtra.setEditable(false);
+            lblExtra = new JLabel("Garansi Resmi (Bulan):");
+            txtExtra = new JTextField(String.valueOf(((ProdukElektronik) p).getGaransiBulan()));
         }
 
-        dlg.add(new JLabel("Kode Produk (Tetap):")); dlg.add(txtKode);
-        dlg.add(new JLabel("Nama Produk:")); dlg.add(txtNama);
-        dlg.add(new JLabel("Harga Satuan (Rp):")); dlg.add(txtHarga);
-        dlg.add(new JLabel(sedangDiKeranjang ? "Jumlah Stok (Terkunci):" : "Jumlah Stok:")); dlg.add(txtStok);
-        dlg.add(lblExtra); dlg.add(txtExtra);
+        dlg.add(new JLabel("Kode Produk:"));
+        dlg.add(txtKode);
+        dlg.add(new JLabel("Nama Produk:"));
+        dlg.add(txtNama);
+        dlg.add(new JLabel("Harga (Rp):"));
+        dlg.add(txtHarga);
+        dlg.add(new JLabel("Stok Tersedia:"));
+        dlg.add(txtStok);
+        dlg.add(lblExtra);
+        dlg.add(txtExtra);
 
         JButton btnBatal = new JButton("Batal");
         btnBatal.addActionListener(e -> dlg.dispose());
+        dlg.add(btnBatal);
 
         JButton btnSimpan = new JButton("Simpan Perubahan");
-        btnSimpan.setBackground(new Color(23, 162, 184));
+        btnSimpan.setBackground(new Color(40, 167, 69));
         btnSimpan.setForeground(Color.WHITE);
         btnSimpan.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
         btnSimpan.addActionListener(e -> {
             try {
                 String namaBaru = txtNama.getText().trim();
@@ -660,71 +764,88 @@ public class KasirDesktopFrame extends JFrame {
 
                 if (sedangDiKeranjang && stokBaru != p.getStok()) {
                     JOptionPane.showMessageDialog(dlg, 
-                        "Penolakan: Kuantitas stok produk [" + kode + "] tidak dapat diubah karena sedang ada " + 
-                        qtyDiKeranjang + " unit di keranjang belanja aktif!\n" +
-                        "Batalkan item tersebut dari keranjang terlebih dahulu jika ingin merevisi kuantitas stok.", 
-                        "Stok Terkunci", JOptionPane.WARNING_MESSAGE);
+                        "Stok produk '" + p.getKode() + "' tidak dapat diubah karena sedang aktif di keranjang belanja!\n" +
+                        "Batalkan transaksi atau selesaikan checkout terlebih dahulu.", 
+                        "Integritas Data Terkunci", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
 
-                boolean sukses = katalog.ubahProduk(kode, namaBaru, hargaBaru, stokBaru, extraBaru);
-                if (sukses) {
+                boolean ok = katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru);
+                if (ok) {
                     simpanKatalogAmanKeFile(PATH_PRODUK);
                     muatTabelKatalog();
                     dlg.dispose();
-                    JOptionPane.showMessageDialog(this, 
-                        "Data produk [" + kode + "] berhasil diperbarui dan disimpan ke berkas produk.txt!", 
-                        "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Data produk '" + p.getKode() + "' berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
                 } else {
-                    JOptionPane.showMessageDialog(this, "Gagal mengubah produk: Produk tidak ditemukan di memori.", "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(dlg, "Gagal mengedit produk. Kode tidak ditemukan.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
-            } catch (NumberFormatException nfe) {
-                JOptionPane.showMessageDialog(dlg, "Harga, stok, dan durasi garansi harus berupa bilangan angka valid!", "Kesalahan Input", JOptionPane.ERROR_MESSAGE);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dlg, "Harga dan stok harus berupa angka bulat positif!", "Error Format Angka", JOptionPane.ERROR_MESSAGE);
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "Kesalahan Validasi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, "Terjadi kesalahan: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        dlg.add(btnBatal);
         dlg.add(btnSimpan);
         dlg.setVisible(true);
     }
 
     private void aksiBukaDialogProdukBaru() {
-        JDialog dlg = new JDialog(this, "Pendaftaran Produk Baru", true);
-        dlg.setSize(400, 320);
+        try {
+            AuthService.enforceAdmin(currentUser, "Menambah Produk Baru");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Terbatas", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JDialog dlg = new JDialog(this, "Registrasi Produk Baru ke Katalog", true);
+        dlg.setSize(440, 380);
         dlg.setLocationRelativeTo(this);
-        dlg.setLayout(new GridLayout(6, 2, 8, 8));
+        dlg.setLayout(new GridLayout(7, 2, 8, 8));
         dlg.getRootPane().setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        JComboBox<String> cmbJenis = new JComboBox<>(new String[]{"Makanan", "Elektronik"});
         JTextField txtKode = new JTextField();
         JTextField txtNama = new JTextField();
         JTextField txtHarga = new JTextField();
         JTextField txtStok = new JTextField();
-        JLabel lblExtra = new JLabel("Tanggal Exp (YYYY-MM-DD):");
-        JTextField txtExtra = new JTextField("2026-12-31");
+        JComboBox<String> cmbJenis = new JComboBox<>(new String[]{"Makanan / Minuman", "Elektronik / Gadget"});
+        JLabel lblExtra = new JLabel("Tgl Kadaluarsa (DD-MM-YYYY):");
+        JTextField txtExtra = new JTextField("31-12-2026");
 
         cmbJenis.addActionListener(e -> {
             if (cmbJenis.getSelectedIndex() == 0) {
-                lblExtra.setText("Tanggal Exp (YYYY-MM-DD):");
-                txtExtra.setText("2026-12-31");
+                lblExtra.setText("Tgl Kadaluarsa (DD-MM-YYYY):");
+                txtExtra.setText("31-12-2026");
             } else {
-                lblExtra.setText("Masa Garansi (Bulan):");
+                lblExtra.setText("Garansi Resmi (Bulan):");
                 txtExtra.setText("12");
             }
         });
 
-        dlg.add(new JLabel("Kategori Produk:")); dlg.add(cmbJenis);
-        dlg.add(new JLabel("Kode Produk:")); dlg.add(txtKode);
-        dlg.add(new JLabel("Nama Produk:")); dlg.add(txtNama);
-        dlg.add(new JLabel("Harga Satuan (Rp):")); dlg.add(txtHarga);
-        dlg.add(new JLabel("Stok Awal:")); dlg.add(txtStok);
-        dlg.add(lblExtra); dlg.add(txtExtra);
+        dlg.add(new JLabel("Kategori Produk:"));
+        dlg.add(cmbJenis);
+        dlg.add(new JLabel("Kode Unik Produk:"));
+        dlg.add(txtKode);
+        dlg.add(new JLabel("Nama Produk:"));
+        dlg.add(txtNama);
+        dlg.add(new JLabel("Harga Satuan (Rp):"));
+        dlg.add(txtHarga);
+        dlg.add(new JLabel("Stok Awal:"));
+        dlg.add(txtStok);
+        dlg.add(lblExtra);
+        dlg.add(txtExtra);
 
-        JButton btnSimpan = new JButton("Simpan Produk");
+        JButton btnBatal = new JButton("Batal");
+        btnBatal.addActionListener(e -> dlg.dispose());
+        dlg.add(btnBatal);
+
+        JButton btnSimpan = new JButton("Daftarkan Produk");
         btnSimpan.setBackground(new Color(40, 167, 69));
         btnSimpan.setForeground(Color.WHITE);
+        btnSimpan.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
         btnSimpan.addActionListener(e -> {
             try {
                 String kode = txtKode.getText().trim();
@@ -756,6 +877,13 @@ public class KasirDesktopFrame extends JFrame {
     }
 
     private void aksiHapusProdukKatalog() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Hapus Produk");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Terbatas", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         int row = tabelKatalog.getSelectedRow();
         if (row < 0) {
             JOptionPane.showMessageDialog(this, "Pilih produk dari tabel yang ingin dihapus!", "Peringatan", JOptionPane.WARNING_MESSAGE);
@@ -767,7 +895,6 @@ public class KasirDesktopFrame extends JFrame {
         int konf = JOptionPane.showConfirmDialog(this, "Yakin ingin menghapus produk berkode '" + kode + "'?", "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
         if (konf == JOptionPane.YES_OPTION) {
             try {
-                // Mendelegasikan validasi integritas langsung ke model KatalogProduk
                 if (katalog.hapusProduk(kode, transaksiAktif)) {
                     simpanKatalogAmanKeFile(PATH_PRODUK);
                     muatTabelKatalog();
@@ -784,11 +911,6 @@ public class KasirDesktopFrame extends JFrame {
         }
     }
 
-    /**
-     * Menyimpan katalog ke berkas produk.txt dengan memperhitungkan reservasi keranjang PENDING.
-     * Mencegah kebocoran stok fisik ke berkas disk jika transaksi belum tuntas (LUNAS).
-     * Mendelegasikan langsung ke method model ProdukFileRepository.simpanAman().
-     */
     public void simpanKatalogAmanKeFile(Path path) throws IOException {
         produkRepo.simpanAman(path, katalog, transaksiAktif);
     }
@@ -800,5 +922,183 @@ public class KasirDesktopFrame extends JFrame {
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas: " + e.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void aksiBukaLaporanHarian() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Melihat Laporan Harian");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Ditolak (Hanya Admin)", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JDialog dlg = new JDialog(this, "Laporan Penjualan Harian & Tutup Kasir", true);
+        dlg.setSize(750, 540);
+        dlg.setLocationRelativeTo(this);
+        dlg.setLayout(new BorderLayout(10, 10));
+
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        String tglDefault = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        JTextField txtTgl = new JTextField(tglDefault, 10);
+        JButton btnFilter = new JButton("Tampilkan Laporan");
+
+        topBar.add(new JLabel("Pilih Tanggal Transaksi (DD-MM-YYYY):"));
+        topBar.add(txtTgl);
+        topBar.add(btnFilter);
+        dlg.add(topBar, BorderLayout.NORTH);
+
+        JTabbedPane tabs = new JTabbedPane();
+        JTextArea txtRingkasan = new JTextArea();
+        txtRingkasan.setFont(new Font("Consolas", Font.PLAIN, 12));
+        txtRingkasan.setEditable(false);
+
+        String[] colsTop = {"Kode Produk", "Nama Produk", "Total Terjual (Qty)", "Total Omzet (Rp)"};
+        DefaultTableModel modelTop = new DefaultTableModel(colsTop, 0) {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable tblTop = new JTable(modelTop);
+
+        tabs.addTab("Ringkasan Finansial", new JScrollPane(txtRingkasan));
+        tabs.addTab("Top 5 Produk Terlaris", new JScrollPane(tblTop));
+        dlg.add(tabs, BorderLayout.CENTER);
+
+        Runnable muatLaporan = () -> {
+            try {
+                LaporanPenjualan lap = LaporanPenjualan.buatLaporan(PATH_TRANSAKSI, PATH_TRANSAKSI_ITEM, txtTgl.getText().trim());
+                StringBuilder sb = new StringBuilder();
+                sb.append("======================================================================\n");
+                sb.append("                  LAPORAN PENJUALAN HARIAN POS                       \n");
+                sb.append("======================================================================\n");
+                sb.append("Tanggal Laporan : ").append(lap.getFilterTanggal().isEmpty() ? "Semua Tanggal" : lap.getFilterTanggal()).append("\n");
+                sb.append("Dicetak Oleh    : ").append(currentUser.getUsername()).append(" (").append(currentUser.getRole()).append(")\n");
+                sb.append("----------------------------------------------------------------------\n");
+                sb.append(String.format("Jumlah Nota LUNAS Berhasil : %d transaksi\n", lap.getJumlahNotaLunas()));
+                sb.append(String.format("Jumlah Nota Dibatalkan(VOID): %d transaksi\n", lap.getJumlahNotaVoid()));
+                sb.append(String.format("TOTAL OMZET BERSIH         : Rp %,.0f\n", lap.getTotalOmzet()));
+                sb.append(String.format("Total Uang Tunai Diterima   : Rp %,.0f\n", lap.getTotalTunai()));
+                sb.append("======================================================================\n");
+
+                if (lap.isAdaTransaksiTanpaRincian()) {
+                    sb.append("\n[CATATAN AUDIT] Terdeteksi transaksi format lama tanpa rincian item.\nData omzet tetap sah dan dihitung penuh.\n");
+                }
+
+                txtRingkasan.setText(sb.toString());
+
+                modelTop.setRowCount(0);
+                for (LaporanPenjualan.ItemTerlaris it : lap.getProdukTerlarisTop5()) {
+                    modelTop.addRow(new Object[]{it.getKodeProduk(), it.getNamaProduk(), it.getTotalQty() + " unit", String.format("Rp %,d", it.getTotalNominal())});
+                }
+            } catch (Exception ex) {
+                txtRingkasan.setText("Gagal menghasilkan laporan: " + ex.getMessage());
+            }
+        };
+
+        btnFilter.addActionListener(e -> muatLaporan.run());
+        muatLaporan.run();
+
+        dlg.setVisible(true);
+    }
+
+    private void aksiBukaRiwayatVoid() {
+        JDialog dlg = new JDialog(this, "Riwayat Transaksi & Pembatalan (VOID Nota)", true);
+        dlg.setSize(850, 480);
+        dlg.setLocationRelativeTo(this);
+        dlg.setLayout(new BorderLayout(8, 8));
+
+        String[] cols = {"ID Transaksi", "Tanggal", "Pelanggan", "Member", "Total Bayar", "Status", "Kasir"};
+        DefaultTableModel modelTrx = new DefaultTableModel(cols, 0) {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable tblTrx = new JTable(modelTrx);
+        tblTrx.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        Runnable refreshData = () -> {
+            modelTrx.setRowCount(0);
+            try {
+                for (String[] t : transaksiRepo.muatSemuaTransaksi(PATH_TRANSAKSI)) {
+                    modelTrx.addRow(new Object[]{t[0], t[1], t[2], t[3], "Rp " + t[4], t[7], t[8]});
+                }
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(dlg, "Gagal memuat log transaksi: " + e.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
+            }
+        };
+
+        refreshData.run();
+        dlg.add(new JScrollPane(tblTrx), BorderLayout.CENTER);
+
+        JPanel pnlAksi = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        JButton btnRincian = new JButton("Lihat Rincian Item");
+        JButton btnVoid = new JButton("VOID Nota Terpilih (Admin Only)");
+        btnVoid.setBackground(new Color(220, 53, 69));
+        btnVoid.setForeground(Color.WHITE);
+        btnVoid.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+        btnRincian.addActionListener(e -> {
+            int row = tblTrx.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(dlg, "Pilih nota pada tabel terlebih dahulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String idTrx = (String) modelTrx.getValueAt(row, 0);
+            try {
+                List<String[]> items = transaksiItemRepo.muatItemByTransaksi(PATH_TRANSAKSI_ITEM, idTrx);
+                if (items.isEmpty()) {
+                    JOptionPane.showMessageDialog(dlg, "Rincian item tidak tersedia (Transaksi Format Lama / Legacy).", "Informasi Item", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    StringBuilder sb = new StringBuilder("Rincian Belanja Nota " + idTrx + ":\n\n");
+                    for (String[] it : items) {
+                        sb.append(String.format("- %s (%s) x %s unit = Rp %s\n", it[0], it[1], it[3], it[5]));
+                    }
+                    JOptionPane.showMessageDialog(dlg, sb.toString(), "Rincian Item Nota", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(dlg, "Gagal membaca item: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        btnVoid.addActionListener(e -> {
+            try {
+                AuthService.enforceAdmin(currentUser, "VOID Nota");
+            } catch (AksesDitolakException ex) {
+                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "Akses Ditolak", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int row = tblTrx.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(dlg, "Pilih nota yang ingin di-VOID terlebih dahulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            String idTrx = (String) modelTrx.getValueAt(row, 0);
+            String status = (String) modelTrx.getValueAt(row, 5);
+
+            int konf = JOptionPane.showConfirmDialog(dlg,
+                "Anda akan membatalkan (VOID) nota '" + idTrx + "'.\n" +
+                "Semua stok produk pada nota ini akan dikembalikan ke katalog inventaris.\n\n" +
+                "Yakin ingin melanjutkan operasi VOID?", "Konfirmasi VOID Nota", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+            if (konf != JOptionPane.YES_OPTION) return;
+
+            try {
+                transaksiRepo.voidTransaksi(PATH_TRANSAKSI, PATH_TRANSAKSI_ITEM, idTrx, katalog, currentUser, transaksiItemRepo);
+                simpanKatalogAmanKeFile(PATH_PRODUK);
+                muatTabelKatalog();
+                refreshData.run();
+                JOptionPane.showMessageDialog(dlg, "Nota '" + idTrx + "' berhasil di-VOID dan stok inventaris telah dipulihkan!", "Sukses VOID", JOptionPane.INFORMATION_MESSAGE);
+            } catch (KasirException ex) {
+                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "VOID Ditolak", JOptionPane.ERROR_MESSAGE);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(dlg, "Gagal memperbarui berkas: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        pnlAksi.add(btnRincian);
+        pnlAksi.add(btnVoid);
+        dlg.add(pnlAksi, BorderLayout.SOUTH);
+
+        dlg.setVisible(true);
     }
 }

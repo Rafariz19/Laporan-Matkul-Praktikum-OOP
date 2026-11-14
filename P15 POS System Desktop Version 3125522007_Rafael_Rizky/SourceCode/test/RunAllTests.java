@@ -3,7 +3,7 @@ package test;
 /**
  * Test Suite Runner Terpadu - P15 POS System Desktop Version
  * Mengeksekusi seluruh pengujian invariansi bisnis, immutability, persistensi berkas aman,
- * dan penanganan integritas transaksi kasir.
+ * multi-role otentikasi, log item granular, laporan harian, dan pembatalan nota (VOID).
  * 
  * Mata Kuliah : Praktikum Pemrograman Berorientasi Obyek (PBO)
  * Mahasiswa   : Rafael Rizky Luga Tanjung (NRP: 3125522007)
@@ -19,18 +19,26 @@ public class RunAllTests {
 
         long start = System.currentTimeMillis();
 
+        // Uji Fase 0 & 0b
         TestOrderLineImmutability.run();
         TestEditStokKeranjang.run();
         TestStokTereservasiSimpanFile.run();
         TestInvarianceUbahProduk.run();
         TestAlurStokResetTransaksi.run();
+
+        // Uji Fase 0c
         TestCheckoutVsSafeSave.run();
         TestHapusProdukKeranjangDanWindowClosing.run();
         TestBatalTidakTulisTransaksiFile.run();
 
+        // Uji Fase 1
+        TestAuthAndRoles.run();
+        TestItemLogAndDailyReport.run();
+        TestVoidTransaction.run();
+
         long durasi = System.currentTimeMillis() - start;
         System.out.println("======================================================================");
-        System.out.println("   HASIL AKHIR: 8/8 PENGUJIAN LULUS DENGAN SUKSES (100% PASS)         ");
+        System.out.println("   HASIL AKHIR: 11/11 PENGUJIAN LULUS DENGAN SUKSES (100% PASS)       ");
         System.out.println("   Total Durasi Pengujian: " + durasi + " ms                          ");
         System.out.println("======================================================================");
     }

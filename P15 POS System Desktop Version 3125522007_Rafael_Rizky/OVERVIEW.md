@@ -31,25 +31,39 @@ SourceCode/
 ├── view/
 │   └── KasirDesktopFrame.java         <-- Lapisan Presentasi (Java Swing GUI & Event Controller)
 ├── model/
+│   ├── Role.java                      <-- Enum Hak Akses (KASIR, ADMIN)
+│   ├── User.java                      <-- Entity Akun Pengguna Terotentikasi
+│   ├── AuthService.java               <-- Layanan Otentikasi & Hashing SHA-256 + Salt
 │   ├── Produk.java                    <-- Abstract Superclass Domain Komoditas
 │   ├── ProdukMakanan.java             <-- Subclass Komoditas Konsumsi (Info Exp)
 │   ├── ProdukElektronik.java          <-- Subclass Komoditas Hardware (Info Garansi)
 │   ├── DapatDidiskon.java             <-- Interface Kontrak Diskon Promosi Item
 │   ├── Pelanggan.java                 <-- Entity Data Konsumen & Skema Diskon Member
-│   ├── ItemTransaksi.java             <-- Komposisi Baris Belanjaan (Produk, Qty, Diskon)
+│   ├── ItemTransaksi.java             <-- Komposisi Baris Belanjaan (Snapshot Nama, Harga, Qty)
 │   ├── Transaksi.java                 <-- Aggregate Root Nota Transaksi & Pelunasan
 │   ├── KatalogProduk.java             <-- Collection Manager In-Memory (List<Produk>)
 │   ├── ProdukFileRepository.java      <-- I/O Persistence Data Katalog (data/produk.txt)
-│   ├── TransaksiFileRepository.java   <-- I/O Persistence Log Audit Nota (data/transaksi.txt)
+│   ├── TransaksiFileRepository.java   <-- I/O Log Transaksi & Operasi VOID (data/transaksi.txt)
+│   ├── TransaksiItemRepository.java   <-- I/O Rincian Item Nota (data/transaksi_item.txt)
+│   ├── LaporanPenjualan.java          <-- Agregasi Finansial Harian & Top 5 Produk
 │   └── exception/
 │       ├── KasirException.java        <-- Superclass Checked Exception Domain Kasir
 │       ├── StokTidakCukupException.java          <-- Ditolak jika qty > stok fisik
 │       ├── PembayaranKurangException.java        <-- Ditolak jika uang tunai < tagihan
 │       ├── TransaksiKosongException.java         <-- Ditolak jika checkout nota kosong
-│       └── StatusTransaksiInvalidException.java  <-- Ditolak jika nota LUNAS/BATAL dimutasi
-└── data/
-    ├── produk.txt                     <-- Basis Data Fisik Berkas Teks Katalog Barang
-    └── transaksi.txt                  <-- Basis Data Fisik Berkas Teks Log Transaksi
+│       ├── StatusTransaksiInvalidException.java  <-- Ditolak jika nota LUNAS/BATAL dimutasi / VOID ganda
+│       ├── ProdukSedangDigunakanException.java   <-- Ditolak jika produk di keranjang dihapus
+│       ├── AksesDitolakException.java            <-- Ditolak jika non-admin akses fitur admin
+│       ├── OtentikasiException.java              <-- Ditolak jika login/registrasi gagal
+│       └── TransaksiTidakDitemukanException.java <-- Ditolak jika nota VOID tidak ditemukan
+├── data/
+│   ├── produk.txt                     <-- Berkas Fisik Katalog Barang
+│   ├── transaksi.txt                  <-- Berkas Fisik Log Transaksi (9 Kolom)
+│   ├── transaksi_item.txt             <-- Berkas Fisik Rincian Item Transaksi
+│   └── users.txt                      <-- Berkas Fisik Kredensial Pengguna (Hash+Salt)
+└── test/
+    ├── RunAllTests.java               <-- Runner Suite Terpadu (11 Uji Otomatis)
+    └── Test*.java                     <-- Berkas-berkas Pengujian Unit & Regresi
 ```
 
 ---
@@ -219,11 +233,65 @@ classDiagram
         +muat(path: Path, katalog: KatalogProduk)
     }
 
+    class Role {
+        <<enumeration>>
+        KASIR
+        ADMIN
+    }
+
+    class User {
+        -username: String
+        -saltHex: String
+        -hashHex: String
+        -role: Role
+        +getUsername(): String
+        +getSaltHex(): String
+        +getHashHex(): String
+        +getRole(): Role
+        +isAdmin(): boolean
+    }
+
+    class AuthService {
+        -userFilePath: Path
+        +isUsersFileEmpty(): boolean
+        +inisialisasiAdminAwal(pwd: String): User
+        +register(username, pwd, role): User
+        +login(username, pwd): User
+        +cariUser(username): User
+        +enforceAdmin(user, operasi)$ void
+    }
+
     class TransaksiFileRepository {
-        +catatTransaksi(path: Path, trx: Transaksi, bayar: double, kembali: double)
+        +catatTransaksi(path, trx, bayar, kembali, kasir)
+        +catatTransaksi(path, trx, bayar, kembali)
+        +voidTransaksi(pathTrx, pathItem, idTrx, katalog, user, itemRepo)
+        +muatSemuaTransaksi(path): List~String[]~
+    }
+
+    class TransaksiItemRepository {
+        +simpanItemTransaksi(path, trx)
+        +muatItemByTransaksi(path, idTrx): List~String[]~
+    }
+
+    class LaporanPenjualan {
+        -filterTanggal: String
+        -jumlahNotaLunas: int
+        -totalOmzet: double
+        -totalDiskon: double
+        -totalTunai: double
+        -jumlahNotaVoid: int
+        +buatLaporan(pathTrx, pathItem, filterTgl)$ LaporanPenjualan
+        +getJumlahNotaLunas(): int
+        +getTotalOmzet(): double
+        +getJumlahNotaVoid(): int
+        +getProdukTerlarisTop5(): List~ItemTerlaris~
+        +isAdaTransaksiTanpaRincian(): boolean
     }
 
     MainDesktop ..> KasirDesktopFrame : Inisialisasi
+    KasirDesktopFrame --> AuthService : Otentikasi & Sesi
+    KasirDesktopFrame --> TransaksiItemRepository : Rincian Item
+    KasirDesktopFrame ..> LaporanPenjualan : Tutup Kasir
     KasirDesktopFrame --> KatalogProduk : Mengelola RAM
     KasirDesktopFrame --> Transaksi : Sesi Aktif
     KasirDesktopFrame ..> ProdukFileRepository : Operasi Simpan/Muat
@@ -251,7 +319,10 @@ java.lang.Exception
            ├── PembayaranKurangException
            ├── TransaksiKosongException
            ├── StatusTransaksiInvalidException
-           └── ProdukSedangDigunakanException
+           ├── ProdukSedangDigunakanException
+           ├── AksesDitolakException
+           ├── OtentikasiException
+           └── TransaksiTidakDitemukanException
 ```
 
 1. **`StokTidakCukupException`**:
@@ -368,12 +439,30 @@ MK01|Roti Gandum Sehat|18000|25|Makanan|2026-12-31
 EL01|Mouse Wireless Ergonomis|150000|15|Elektronik|12
 ```
 
-### B. Berkas `data/transaksi.txt`
-Struktur Kolom: `ID_TRANSAKSI|TANGGAL|NAMA_PELANGGAN|TIPE_MEMBER|TOTAL_BAYAR|TUNAI|KEMBALIAN|STATUS`
+### B. Berkas `data/transaksi.txt` (9 Kolom, Backward-Compatible dengan 8 Kolom)
+Struktur Kolom: `ID_TRANSAKSI|TANGGAL|NAMA_PELANGGAN|TIPE_MEMBER|TOTAL_BAYAR|TUNAI|KEMBALIAN|STATUS|KASIR`
+- Transaksi format baru menyertakan username kasir di kolom ke-9.
+- Jika berkas dibaca hanya memiliki 8 kolom (legacy), sistem otomatis menganggap kolom kasir bernilai `"system"`.
 Contoh baris data terhitung presisi:
 ```text
-TRX-1794207600000|09-11-2026 14:00|Rafael Rizky|VIP|121125|150000|28875|LUNAS
+TRX-1794207600000|09-11-2026 14:00|Rafael Rizky|VIP|121125|150000|28875|LUNAS|admin
 ```
+
+### C. Berkas `data/transaksi_item.txt` (Log Item Tiap Nota)
+Struktur Kolom: `ID_TRANSAKSI|KODE_PRODUK|NAMA_PRODUK|HARGA_SATUAN|QTY|DISKON_ITEM|SUBTOTAL`
+Menyimpan snapshot nama dan harga saat checkout sehingga kebal terhadap mutasi katalog di masa depan.
+Contoh baris data:
+```text
+TRX-1794207600000|MK01|Roti Gandum Sehat|18000|2|0.00|36000
+TRX-1794207600000|EL01|Mouse Wireless Ergonomis|150000|1|0.00|150000
+```
+
+### D. Berkas `data/users.txt` (Kredensial Pengguna Multi-Role)
+Struktur Kolom: `USERNAME|SALT_HEX|HASH_HEX|ROLE`
+- `SALT_HEX`: 16 bytes acak via `SecureRandom` JDK (32 karakter heksadesimal).
+- `HASH_HEX`: SHA-256 digest dari `(salt + password)` via `MessageDigest` JDK (64 karakter heksadesimal).
+- `ROLE`: `ADMIN` atau `KASIR`.
+- Tidak ada teks password terbuka (*zero plain-text password*).
 
 > **Verifikasi Matematis & Stempel Waktu (WIB / UTC+7)**:
 > - **ID Transaksi**: `TRX-1794207600000`
