@@ -157,6 +157,23 @@ public class Transaksi {
 
     // --- METODE KALKULASI FINANSIAL TRANSAKSI ---
 
+    /**
+     * Membatalkan seluruh transaksi yang sedang berlangsung.
+     * Mengembalikan alokasi stok seluruh item di keranjang belanja ke objek produk masing-masing.
+     * 
+     * @throws KasirException jika status transaksi bukan PENDING
+     */
+    public void batalkanTransaksi() throws KasirException {
+        if (!"PENDING".equals(this.statusTransaksi)) {
+            throw new StatusTransaksiInvalidException(this.idTransaksi, this.statusTransaksi, "batalkanTransaksi");
+        }
+        for (ItemTransaksi item : this.daftarItem) {
+            item.getProduk().tambahStok(item.getJumlahBeli());
+        }
+        this.daftarItem.clear();
+        this.statusTransaksi = "DIBATALKAN";
+    }
+
     public int hitungTotalSubtotal() {
         int total = 0;
         for (ItemTransaksi item : daftarItem) {
@@ -281,9 +298,9 @@ public class Transaksi {
             System.out.printf("%d. %s - %s (%s)\n", nomor++, p.getKode(), p.getNama(), p.getKategoriInfo());
             System.out.printf("   %d x Rp %,d%s%s = Rp %,d\n",
                     item.getJumlahBeli(),
-                    p.getHarga(),
+                    item.getHargaSatuan(),
                     discText,
-                    padSpaces(26 - String.format("%d x Rp %,d%s", item.getJumlahBeli(), p.getHarga(), discText).length()),
+                    padSpaces(26 - String.format("%d x Rp %,d%s", item.getJumlahBeli(), item.getHargaSatuan(), discText).length()),
                     item.hitungSubtotal());
         }
         System.out.println("----------------------------------------------------------------------");
@@ -315,5 +332,61 @@ public class Transaksi {
             sb.append(" ");
         }
         return sb.toString();
+    }
+
+    /**
+     * Memeriksa apakah produk dengan kode tertentu ada di keranjang transaksi yang masih PENDING.
+     * Jika transaksi sudah LUNAS atau DIBATALKAN, mengembalikan false.
+     * 
+     * @param kodeProduk kode produk yang dicari
+     * @return true jika produk ada dalam keranjang transaksi aktif
+     */
+    public boolean adaProdukAktif(String kodeProduk) {
+        if (kodeProduk == null || !"PENDING".equals(statusTransaksi)) {
+            return false;
+        }
+        for (ItemTransaksi item : daftarItem) {
+            if (item.getProduk().getKode().equalsIgnoreCase(kodeProduk.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Menghitung total kuantitas produk tertentu yang sedang aktif di keranjang PENDING.
+     * 
+     * @param kodeProduk kode produk
+     * @return total kuantitas jika PENDING, atau 0 jika tidak ada / bukan PENDING
+     */
+    public int getKuantitasItemAktif(String kodeProduk) {
+        if (kodeProduk == null || !"PENDING".equals(statusTransaksi)) {
+            return 0;
+        }
+        int total = 0;
+        for (ItemTransaksi item : daftarItem) {
+            if (item.getProduk().getKode().equalsIgnoreCase(kodeProduk.trim())) {
+                total += item.getJumlahBeli();
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Mendapatkan peta reservasi stok (kode produk -> kuantitas di keranjang)
+     * HANYA jika status transaksi saat ini adalah PENDING.
+     * Jika status transaksi LUNAS atau DIBATALKAN, mengembalikan peta kosong.
+     * 
+     * @return Map berisi pasangan kode produk dan jumlah beli
+     */
+    public java.util.Map<String, Integer> getReservasiStokMap() {
+        java.util.Map<String, Integer> map = new java.util.HashMap<>();
+        if ("PENDING".equals(statusTransaksi)) {
+            for (ItemTransaksi item : daftarItem) {
+                String k = item.getProduk().getKode();
+                map.put(k, map.getOrDefault(k, 0) + item.getJumlahBeli());
+            }
+        }
+        return map;
     }
 }

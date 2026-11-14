@@ -3,25 +3,23 @@ package model;
 /**
  * Class: ItemTransaksi
  * Merepresentasikan baris item pembelian dalam transaksi penjualan.
+ * Menyimpan hargaSatuan sebagai snapshot harga saat item dimasukkan ke keranjang
+ * guna menjamin Order Line Immutability (perubahan harga di katalog tidak mengubah transaksi berjalan).
  * 
- * Hubungan Relasi:
- * 1. Aggregation (o-->) dengan Produk: ItemTransaksi memegang referensi ke objek Produk
- *    secara polimorfik (independen).
- * 2. Composition (*-->) dari Transaksi: ItemTransaksi dikendalikan penuh oleh Transaksi.
- * 
- * Sesuai Modul 10:
- * Menegakkan validasi ketat dan throwing IllegalArgumentException saat pembuatan
- * atau pembaruan item jika terdapat pelanggaran batasan bisnis.
- * 
- * Mahasiswa: Rafael Rizky Luga Tanjung (NRP: 3125522007) - PENS PSDKU Sumenep (2026)
+ * Mata Kuliah : Praktikum Pemrograman Berorientasi Obyek (PBO)
+ * Mahasiswa   : Rafael Rizky Luga Tanjung (NRP: 3125522007)
+ * Kampus      : PENS PSDKU Sumenep (2026)
  */
 public class ItemTransaksi {
     private Produk produk;
     private int jumlahBeli;
     private double diskonItem; // Nilai diskon promosi item (0.0 s/d 1.0)
+    private int hargaSatuan;   // Snapshot harga satuan saat item ditambahkan
+    private String namaProduk; // Snapshot nama produk saat item ditambahkan
 
     /**
      * Constructor 1: Item standar tanpa diskon promosi baris.
+     * Mengambil snapshot harga dari produk.getHarga().
      * 
      * @param produk     referensi objek produk polimorfik
      * @param jumlahBeli kuantitas yang dibeli (harus > 0)
@@ -32,6 +30,7 @@ public class ItemTransaksi {
 
     /**
      * Constructor 2: Item dengan diskon promosi baris (Overloaded Constructor).
+     * Mengambil snapshot harga dari produk.getHarga().
      * 
      * @param produk     referensi objek produk polimorfik
      * @param jumlahBeli kuantitas yang dibeli (harus > 0)
@@ -39,6 +38,31 @@ public class ItemTransaksi {
      * @throws IllegalArgumentException jika parameter melanggar batasan bisnis
      */
     public ItemTransaksi(Produk produk, int jumlahBeli, double diskonItem) {
+        this(produk, jumlahBeli, diskonItem, produk != null ? produk.getHarga() : 0);
+    }
+
+    /**
+     * Constructor 3: Item lengkap dengan penentuan snapshot hargaSatuan eksplisit.
+     * 
+     * @param produk      referensi objek produk polimorfik
+     * @param jumlahBeli  kuantitas yang dibeli (harus > 0)
+     * @param diskonItem  rasio diskon barang (0.0 s/d 1.0)
+     * @param hargaSatuan harga satuan yang dikunci untuk item ini (harus > 0)
+     */
+    public ItemTransaksi(Produk produk, int jumlahBeli, double diskonItem, int hargaSatuan) {
+        this(produk, jumlahBeli, diskonItem, hargaSatuan, produk != null ? produk.getNama() : "");
+    }
+
+    /**
+     * Constructor 4: Item lengkap dengan penentuan snapshot hargaSatuan dan namaProduk eksplisit.
+     * 
+     * @param produk      referensi objek produk polimorfik
+     * @param jumlahBeli  kuantitas yang dibeli (harus > 0)
+     * @param diskonItem  rasio diskon barang (0.0 s/d 1.0)
+     * @param hargaSatuan harga satuan yang dikunci untuk item ini (harus > 0)
+     * @param namaProduk  nama produk yang dikunci untuk nota ini
+     */
+    public ItemTransaksi(Produk produk, int jumlahBeli, double diskonItem, int hargaSatuan, String namaProduk) {
         if (produk == null) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Objek produk tidak boleh null pada ItemTransaksi!");
         }
@@ -48,10 +72,15 @@ public class ItemTransaksi {
         if (diskonItem < 0.0 || diskonItem > 1.0) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Rasio diskon item harus di antara 0.0 dan 1.0! (Diberikan: " + diskonItem + ")");
         }
+        if (hargaSatuan <= 0) {
+            throw new IllegalArgumentException("[ERROR VALIDASI] Harga satuan pada ItemTransaksi harus lebih besar dari 0! (Diberikan: " + hargaSatuan + ")");
+        }
 
         this.produk = produk;
         this.jumlahBeli = jumlahBeli;
         this.diskonItem = diskonItem;
+        this.hargaSatuan = hargaSatuan;
+        this.namaProduk = (namaProduk != null && !namaProduk.trim().isEmpty()) ? namaProduk.trim() : produk.getNama();
     }
 
     // --- GETTER METHODS ---
@@ -66,6 +95,14 @@ public class ItemTransaksi {
 
     public double getDiskonItem() {
         return diskonItem;
+    }
+
+    public int getHargaSatuan() {
+        return hargaSatuan;
+    }
+
+    public String getNamaProduk() {
+        return namaProduk;
     }
 
     // --- BEHAVIOR METHODS DENGAN EXCEPTION VALIDATION ---
@@ -97,12 +134,13 @@ public class ItemTransaksi {
     }
 
     /**
-     * Menghitung subtotal kotor (sebelum diskon item).
+     * Menghitung subtotal kotor berdasarkan snapshot hargaSatuan saat ditambahkan.
+     * Menjamin perubahan harga di katalog tidak mengubah nilai kotor item yang sudah di keranjang.
      * 
      * @return subtotal gross dalam Rupiah
      */
     public int hitungSubtotalGross() {
-        return produk.getHarga() * jumlahBeli;
+        return hargaSatuan * jumlahBeli;
     }
 
     /**
@@ -133,7 +171,7 @@ public class ItemTransaksi {
                 produk.getNama(),
                 produk.getKategoriInfo(),
                 jumlahBeli,
-                produk.getHarga(),
+                hargaSatuan,
                 diskonStr,
                 hitungSubtotal());
     }

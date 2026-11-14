@@ -1,5 +1,7 @@
 package model;
 
+import model.exception.KasirException;
+import model.exception.ProdukSedangDigunakanException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -82,40 +84,13 @@ public class KatalogProduk {
      * @return true jika produk berhasil diperbarui, false jika kode tidak ditemukan
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
-    /**
-     * Memperbarui data produk termasuk kode produk baru (dengan validasi keunikan kode).
-     * 
-     * @param kodeLama   kode produk yang akan diedit (sebagai kunci pencarian saat ini)
-     * @param kodeBaru   kode produk baru yang diinginkan
-     * @param namaBaru   nama baru produk
-     * @param hargaBaru  harga satuan baru produk
-     * @param stokBaru   jumlah stok baru produk
-     * @param extraBaru  info khusus (tanggal kadaluarsa untuk makanan, durasi garansi untuk elektronik)
-     * @return true jika produk berhasil diperbarui, false jika kode lama tidak ditemukan
-     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis atau kode baru duplikat
-     */
-    public boolean ubahProduk(String kodeLama, String kodeBaru, String namaBaru, int hargaBaru, int stokBaru, String extraBaru) {
-        Produk p = cariProduk(kodeLama);
+    public boolean ubahProduk(String kode, String namaBaru, int hargaBaru, int stokBaru, String extraBaru) {
+        Produk p = cariProduk(kode);
         if (p == null) {
             return false;
         }
 
         // --- PRE-VALIDASI KETAT (ATOMIC INVARIANCE MODUL 10 & 11) ---
-        if (kodeBaru == null || kodeBaru.trim().isEmpty()) {
-            throw new IllegalArgumentException("[ERROR VALIDASI] Kode produk baru tidak boleh kosong atau null!");
-        }
-        if (kodeBaru.contains("|") || kodeBaru.contains("\n") || kodeBaru.contains("\r")) {
-            throw new IllegalArgumentException("[ERROR SANITASI] Kode produk baru tidak boleh mengandung pemisah '|' atau baris baru!");
-        }
-
-        // Jika kode produk diubah, pastikan kode baru belum dipakai produk lain
-        if (!p.getKode().equalsIgnoreCase(kodeBaru.trim())) {
-            Produk duplikat = cariProduk(kodeBaru.trim());
-            if (duplikat != null && duplikat != p) {
-                throw new IllegalArgumentException("[ERROR VALIDASI] Kode produk baru '" + kodeBaru.trim() + "' sudah digunakan oleh produk lain!");
-            }
-        }
-
         if (namaBaru == null || namaBaru.trim().isEmpty()) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Nama produk baru tidak boleh kosong atau null!");
         }
@@ -146,7 +121,6 @@ public class KatalogProduk {
         }
 
         // --- MUTASI HANYA SETELAH SELURUH VALIDASI LOLOS ---
-        p.ubahKode(kodeBaru.trim());
         p.ubahNama(namaBaru);
         p.ubahHarga(hargaBaru);
         p.ubahStok(stokBaru);
@@ -160,19 +134,31 @@ public class KatalogProduk {
         return true;
     }
 
-    /**
-     * Overload ubahProduk untuk kompatibilitas jika kode produk tidak diubah.
-     */
-    public boolean ubahProduk(String kode, String namaBaru, int hargaBaru, int stokBaru, String extraBaru) {
-        return ubahProduk(kode, kode, namaBaru, hargaBaru, stokBaru, extraBaru);
-    }
-
     public boolean hapusProduk(String kode) {
         Produk p = cariProduk(kode);
         if (p != null) {
             return daftarProduk.remove(p);
         }
         return false;
+    }
+
+    /**
+     * Menghapus produk dari katalog dengan pengamanan transaksi aktif.
+     * Mencegah integritas data rusak akibat penghapusan produk yang sedang berada dalam keranjang belanja PENDING.
+     * 
+     * @param kode           kode produk yang ingin dihapus
+     * @param transaksiAktif transaksi kasir yang sedang berjalan
+     * @return true jika berhasil dihapus, false jika kode tidak ditemukan
+     * @throws KasirException jika produk sedang aktif di keranjang belanja PENDING
+     */
+    public boolean hapusProduk(String kode, Transaksi transaksiAktif) throws KasirException {
+        if (kode == null || kode.trim().isEmpty()) {
+            return false;
+        }
+        if (transaksiAktif != null && transaksiAktif.adaProdukAktif(kode)) {
+            throw new ProdukSedangDigunakanException(kode.trim());
+        }
+        return hapusProduk(kode);
     }
 
     /**
@@ -257,6 +243,37 @@ public class KatalogProduk {
      */
     public List<Produk> getDaftarProdukReadOnly() {
         return Collections.unmodifiableList(daftarProduk);
+    }
+
+    /**
+     * Membuat snapshot KatalogProduk dengan penyesuaian stok aman:
+     * Menambahkan kembali stok tereservasi dari transaksi HANYA jika transaksi berstatus PENDING.
+     * Jika transaksi null atau sudah berstatus LUNAS/DIBATALKAN, snapshot memiliki stok aktual katalog.
+     * Digunakan untuk mencegah kebocoran stok fisik ke berkas disk jika kasir menyimpan katalog saat transaksi belum selesai.
+     * 
+     * @param transaksi transaksi berjalan (bisa null)
+     * @return snapshot objek KatalogProduk independen
+     */
+    public KatalogProduk buatSnapshotStokAman(Transaksi transaksi) {
+        java.util.Map<String, Integer> reservasi = (transaksi != null) 
+                ? transaksi.getReservasiStokMap() 
+                : java.util.Collections.emptyMap();
+
+        KatalogProduk snapshot = new KatalogProduk();
+        for (Produk p : this.daftarProduk) {
+            int extra = reservasi.getOrDefault(p.getKode(), 0);
+            int stokEfektif = p.getStok() + extra;
+            if (p instanceof ProdukMakanan) {
+                snapshot.tambahProduk(new ProdukMakanan(
+                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukMakanan) p).getTanggalKadaluarsa()
+                ));
+            } else if (p instanceof ProdukElektronik) {
+                snapshot.tambahProduk(new ProdukElektronik(
+                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukElektronik) p).getGaransiBulan()
+                ));
+            }
+        }
+        return snapshot;
     }
 }
 

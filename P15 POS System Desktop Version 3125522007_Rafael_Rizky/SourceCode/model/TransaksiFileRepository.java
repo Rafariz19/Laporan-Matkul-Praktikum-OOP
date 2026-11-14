@@ -1,5 +1,6 @@
 package model;
 
+import model.exception.StatusTransaksiInvalidException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -12,7 +13,7 @@ import java.util.List;
  * Class TransaksiFileRepository - Pencatatan Log Transaksi ke File (Modul 12)
  * Menyimpan riwayat nota transaksi penjualan yang sudah lunas ke dalam file teks transaksi.txt.
  * 
- * Format: ID_TRX|TANGGAL|NAMA_PELANGGAN|TIPE_MEMBER|TOTAL_BAYAR|STATUS
+ * Format: ID_TRX|TANGGAL|NAMA_PELANGGAN|TIPE_MEMBER|TOTAL_BAYAR|TUNAI|KEMBALIAN|STATUS
  */
 public class TransaksiFileRepository {
 
@@ -21,10 +22,15 @@ public class TransaksiFileRepository {
 
     /**
      * Menambahkan (append) catatan transaksi yang telah lunas ke dalam file transaksi.txt.
+     * Guard: Menolak keras nota non-LUNAS dengan melempar StatusTransaksiInvalidException.
      */
-    public void catatTransaksi(Path lokasi, Transaksi trx, double tunaiDiterima, double kembalian) throws IOException {
+    public void catatTransaksi(Path lokasi, Transaksi trx, double tunaiDiterima, double kembalian) throws IOException, StatusTransaksiInvalidException {
         if (lokasi == null || trx == null) {
             throw new IllegalArgumentException("[ERROR] Lokasi dan transaksi tidak boleh null.");
+        }
+
+        if (!"LUNAS".equals(trx.getStatusTransaksi())) {
+            throw new StatusTransaksiInvalidException(trx.getIdTransaksi(), trx.getStatusTransaksi(), "catatTransaksi");
         }
 
         String id = trx.getIdTransaksi();

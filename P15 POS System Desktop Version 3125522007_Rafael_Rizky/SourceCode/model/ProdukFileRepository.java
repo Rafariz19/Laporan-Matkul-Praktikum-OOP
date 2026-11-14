@@ -64,6 +64,24 @@ public class ProdukFileRepository {
     }
 
     /**
+     * Menyimpan katalog ke berkas teks secara aman dengan mempertimbangkan transaksi aktif.
+     * Menggunakan snapshot katalog yang mengembalikan stok tereservasi HANYA jika transaksi berstatus PENDING.
+     * Jika transaksi berstatus LUNAS atau null, stok fisik yang disimpan adalah stok aktual saat ini.
+     * 
+     * @param lokasi    path tujuan berkas
+     * @param katalog   katalog produk di memori
+     * @param transaksi transaksi berjalan (bisa null)
+     * @throws IOException jika terjadi kegagalan I/O penulisan berkas
+     */
+    public void simpanAman(Path lokasi, KatalogProduk katalog, Transaksi transaksi) throws IOException {
+        if (lokasi == null || katalog == null) {
+            throw new IllegalArgumentException("[ERROR] Lokasi file dan katalog tidak boleh null.");
+        }
+        KatalogProduk snapshot = katalog.buatSnapshotStokAman(transaksi);
+        simpan(lokasi, snapshot);
+    }
+
+    /**
      * Membaca file teks dan membentuk kembali kumpulan objek Produk ke dalam KatalogProduk.
      * Menerapkan prinsip ATOMIC/SAFE LOAD: Seluruh baris diverifikasi ke dalam temporary list.
      * Jika terjadi kegagalan format/validasi di tengah jalan, katalog lama tetap dipertahankan utuh.
