@@ -48,9 +48,10 @@ public final class TemaWarna {
     public static final Color TOMBOL_CHECKOUT = APPLE_BLUE;   // #007AFF
 
     // Teks & Pembatas
-    public static final Color TEKS_PUTIH      = Color.WHITE;
-    public static final Color TEKS_GELAP      = APPLE_BLACK;
-    public static final Color TEKS_MUTED      = APPLE_GRAY;
+    public static final Color TEKS_PUTIH         = Color.WHITE;
+    public static final Color TEKS_GELAP         = APPLE_BLACK;
+    public static final Color TEKS_TOMBOL_NETRAL = APPLE_BLACK; // #1D1D1F (Teks hitam pekat kontras tinggi untuk tombol terang)
+    public static final Color TEKS_MUTED         = APPLE_GRAY;
     public static final Color TEKS_SUBTITLE   = new Color(0xD1, 0xD1, 0xD6);
     public static final Color BADGE_KASIR     = APPLE_BLUE;
     public static final Color BORDER_DIVIDER  = APPLE_GRAY;

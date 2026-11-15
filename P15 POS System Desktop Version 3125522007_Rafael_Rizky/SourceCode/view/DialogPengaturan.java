@@ -108,7 +108,7 @@ public class DialogPengaturan extends JDialog {
                 selectedAccentColor = c;
                 pnlAccentPreview.setBackground(c);
                 if (btnSimpanSemua != null) {
-                    btnSimpanSemua.setCustomColors(c, TemaWarna.TEKS_PUTIH);
+                    btnSimpanSemua.setCustomColors(c, TemaWarna.getKontrasForeground(c));
                 }
             }
         });
@@ -188,10 +188,10 @@ public class DialogPengaturan extends JDialog {
         JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         pnlBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 220, 220)));
 
-        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnBatal.addActionListener(e -> dispose());
 
-        btnSimpanSemua = new ModernButton("💾 Simpan Pengaturan", selectedAccentColor, TemaWarna.TEKS_PUTIH);
+        btnSimpanSemua = new ModernButton("💾 Simpan Pengaturan", selectedAccentColor, TemaWarna.getKontrasForeground(selectedAccentColor));
         btnSimpanSemua.addActionListener(e -> aksiSimpanSemua());
 
         pnlBottom.add(btnBatal);
@@ -205,7 +205,7 @@ public class DialogPengaturan extends JDialog {
         pnlHeaderPreview.setBackground(header);
         pnlAccentPreview.setBackground(accent);
         if (btnSimpanSemua != null) {
-            btnSimpanSemua.setCustomColors(accent, TemaWarna.TEKS_PUTIH);
+            btnSimpanSemua.setCustomColors(accent, TemaWarna.getKontrasForeground(accent));
         }
     }
 

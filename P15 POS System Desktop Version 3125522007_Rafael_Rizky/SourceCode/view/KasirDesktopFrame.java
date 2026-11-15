@@ -409,7 +409,7 @@ public class KasirDesktopFrame extends JFrame {
         searchPanel.add(new JLabel("Cari:"));
         txtCari = new JTextField(9);
         ModernButton btnCari = new ModernButton("Cari", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
-        ModernButton btnReset = new ModernButton("Reset", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnReset = new ModernButton("Reset", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
 
         btnCari.addActionListener(e -> filterKatalog(txtCari.getText()));
         btnReset.addActionListener(e -> { txtCari.setText(""); muatTabelKatalog(); });
@@ -457,7 +457,7 @@ public class KasirDesktopFrame extends JFrame {
         ModernButton btnBaru = new ModernButton("+ Produk Baru", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnEdit = new ModernButton("Edit Produk", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnHapus = new ModernButton("Hapus", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
-        ModernButton btnSimpanKatalog = new ModernButton("💾 Simpan File", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnSimpanKatalog = new ModernButton("💾 Simpan File", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
 
         btnTambahKeranjang.addActionListener(e -> aksiTambahKeKeranjang());
         btnBaru.addActionListener(e -> aksiBukaDialogProdukBaru());
@@ -525,7 +525,7 @@ public class KasirDesktopFrame extends JFrame {
         JPanel cartActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         cartActions.setBackground(TemaWarna.APPLE_CANVAS);
         ModernButton btnHapusItem = new ModernButton("Batalkan Item", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
-        ModernButton btnResetTrx = new ModernButton("Reset Transaksi", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnResetTrx = new ModernButton("Reset Transaksi", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
 
         btnHapusItem.addActionListener(e -> aksiBatalkanItemKeranjang());
         btnResetTrx.addActionListener(e -> {
@@ -933,7 +933,7 @@ public class KasirDesktopFrame extends JFrame {
         JPanel pnlAksiStruk = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         ModernButton btnCetakKertas = new ModernButton("🖨️ Cetak ke Printer", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnEksporFile = new ModernButton("💾 Simpan Berkas Teks", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
-        ModernButton btnTutup = new ModernButton("Selesai / Tutup", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnTutup = new ModernButton("Selesai / Tutup", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
 
         btnCetakKertas.addActionListener(e -> {
             try {
@@ -1034,7 +1034,7 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
-        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnBatal.addActionListener(e -> dlg.dispose());
         dlg.add(btnBatal);
 
@@ -1106,7 +1106,7 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
-        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnBatal.addActionListener(e -> dlg.dispose());
         dlg.add(btnBatal);
 
@@ -1264,7 +1264,7 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(tabs, BorderLayout.CENTER);
 
         JPanel pnlBawah = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        ModernButton btnTutup = new ModernButton("Tutup", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnTutup = new ModernButton("Tutup", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnTutup.addActionListener(e -> dlg.dispose());
         pnlBawah.add(btnTutup);
         dlg.add(pnlBawah, BorderLayout.SOUTH);
