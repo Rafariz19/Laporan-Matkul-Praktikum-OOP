@@ -122,11 +122,11 @@ public class DialogPengaturan extends JDialog {
         JPanel pnlPreset = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
         pnlPreset.setBorder(BorderFactory.createTitledBorder("Pilihan Tema Warna Profesional Cepat"));
 
+        ModernButton btnThemeApple = new ModernButton("Apple Modern", TemaWarna.APPLE_BLACK, Color.WHITE);
+        btnThemeApple.addActionListener(e -> terapkanPreset(TemaWarna.APPLE_BLACK, TemaWarna.APPLE_BLUE));
+
         ModernButton btnThemeNavy = new ModernButton("Navy Sapphire", new Color(27, 54, 93), Color.WHITE);
         btnThemeNavy.addActionListener(e -> terapkanPreset(new Color(27, 54, 93), new Color(0, 150, 136)));
-
-        ModernButton btnThemeEmerald = new ModernButton("Emerald Forest", new Color(20, 90, 50), Color.WHITE);
-        btnThemeEmerald.addActionListener(e -> terapkanPreset(new Color(20, 90, 50), new Color(46, 204, 113)));
 
         ModernButton btnThemeCharcoal = new ModernButton("Modern Charcoal", new Color(44, 62, 80), Color.WHITE);
         btnThemeCharcoal.addActionListener(e -> terapkanPreset(new Color(44, 62, 80), new Color(52, 152, 219)));
@@ -134,8 +134,8 @@ public class DialogPengaturan extends JDialog {
         ModernButton btnThemeCrimson = new ModernButton("Crimson Wine", new Color(120, 20, 30), Color.WHITE);
         btnThemeCrimson.addActionListener(e -> terapkanPreset(new Color(120, 20, 30), new Color(230, 126, 34)));
 
+        pnlPreset.add(btnThemeApple);
         pnlPreset.add(btnThemeNavy);
-        pnlPreset.add(btnThemeEmerald);
         pnlPreset.add(btnThemeCharcoal);
         pnlPreset.add(btnThemeCrimson);
         pnlTampilan.add(pnlPreset, BorderLayout.CENTER);

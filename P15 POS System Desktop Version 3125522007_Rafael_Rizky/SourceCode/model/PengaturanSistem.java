@@ -36,8 +36,8 @@ public class PengaturanSistem {
     public PengaturanSistem() {
         this.judulAplikasi = "SISTEM KASIR POINT OF SALE (POS DESKTOP)";
         this.teksHeaderSub = "PBO 2026 | Rafael Rizky Luga Tanjung (NRP: 3125522007) | PENS PSDKU Sumenep";
-        this.warnaHeader = new Color(27, 54, 93);   // Professional Navy Blue
-        this.warnaAksen = new Color(0, 150, 136);    // Modern Teal
+        this.warnaHeader = new Color(0x1D, 0x1D, 0x1F);   // Apple Space Black (#1D1D1F)
+        this.warnaAksen = new Color(0x00, 0x7A, 0xFF);    // Apple Vibrant Blue (#007AFF)
         this.daftarDiskonMember = new LinkedHashMap<>();
 
         // Nilai bawaan diskon membership

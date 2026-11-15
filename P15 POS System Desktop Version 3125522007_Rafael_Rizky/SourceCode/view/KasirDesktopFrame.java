@@ -229,7 +229,7 @@ public class KasirDesktopFrame extends JFrame {
 
         lblSub = new JLabel(pengaturanSistem.getTeksHeaderSub());
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblSub.setForeground(new Color(220, 235, 255));
+        lblSub.setForeground(TemaWarna.TEKS_SUBTITLE);
         headerLeft.add(lblTitle);
         headerLeft.add(lblSub);
 
@@ -238,7 +238,7 @@ public class KasirDesktopFrame extends JFrame {
 
         lblUserBadge = new JLabel(currentUser.getUsername() + " [" + currentUser.getRole() + "]");
         lblUserBadge.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblUserBadge.setForeground(new Color(255, 230, 100));
+        lblUserBadge.setForeground(TemaWarna.BADGE_KASIR);
 
         ModernButton btnPengaturan = new ModernButton("⚙️ Pengaturan", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
         btnPengaturan.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -260,7 +260,7 @@ public class KasirDesktopFrame extends JFrame {
         });
 
         JLabel lblPetugasText = new JLabel("Petugas: ");
-        lblPetugasText.setForeground(Color.WHITE);
+        lblPetugasText.setForeground(TemaWarna.TEKS_SUBTITLE);
         headerRight.add(lblPetugasText);
         headerRight.add(lblUserBadge);
         headerRight.add(btnPengaturan);
@@ -272,20 +272,24 @@ public class KasirDesktopFrame extends JFrame {
         headerPanel.add(headerRight, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
+        getContentPane().setBackground(TemaWarna.APPLE_CANVAS);
+
         // 2. MAIN SPLIT PANEL (Katalog vs Keranjang)
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buatPanelKatalog(), buatPanelKeranjang());
         splitPane.setDividerLocation(620);
         splitPane.setResizeWeight(0.5);
+        splitPane.setBackground(TemaWarna.APPLE_CANVAS);
+        splitPane.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
         add(splitPane, BorderLayout.CENTER);
 
         // 3. FOOTER STATUS BAR
         JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 6));
-        footerPanel.setBackground(new Color(240, 243, 246));
-        footerPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(200, 205, 210)));
+        footerPanel.setBackground(TemaWarna.APPLE_CANVAS);
+        footerPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, TemaWarna.BORDER_DIVIDER));
 
-        JLabel lblStatus = new JLabel("Status Sistem: Desain Modern & Responsif | Multi-role aktif (Admin/Kasir) | Terhubung ke data/settings.txt.");
+        JLabel lblStatus = new JLabel("Status Sistem: Apple Modern Theme (#F5F5F7, #1D1D1F, #AAAAAA, #007AFF) | Multi-role aktif (Admin/Kasir).");
         lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblStatus.setForeground(new Color(80, 90, 100));
+        lblStatus.setForeground(TemaWarna.APPLE_BLACK);
         footerPanel.add(lblStatus);
         add(footerPanel, BorderLayout.SOUTH);
     }
@@ -332,20 +336,24 @@ public class KasirDesktopFrame extends JFrame {
 
     private JPanel buatPanelKatalog() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(TemaWarna.APPLE_CANVAS);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 5));
 
         // Top Header Katalog: Menggunakan GridBagLayout / BoxLayout Responsif 2-Baris agar TIDAK TERTAMPAI
         JPanel topPanel = new JPanel();
+        topPanel.setBackground(TemaWarna.APPLE_CANVAS);
         topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
 
         JPanel row1 = new JPanel(new BorderLayout(5, 5));
+        row1.setBackground(TemaWarna.APPLE_CANVAS);
         JLabel lblSection = new JLabel("KATALOG INVENTARIS PRODUK");
         lblSection.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblSection.setForeground(new Color(30, 50, 70));
+        lblSection.setForeground(TemaWarna.APPLE_BLACK);
         row1.add(lblSection, BorderLayout.WEST);
 
         // Barcode Wedge & Search Row (Wrap & Responsif)
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        searchPanel.setBackground(TemaWarna.APPLE_CANVAS);
         searchPanel.add(new JLabel("Scan Barcode:"));
         txtBarcodeScan = new JTextField(9);
         txtBarcodeScan.setToolTipText("Arahkan scanner barcode atau ketik kode lalu tekan Enter");
@@ -380,13 +388,22 @@ public class KasirDesktopFrame extends JFrame {
         tabelKatalog.setRowHeight(25);
         tabelKatalog.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tabelKatalog.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tabelKatalog.getTableHeader().setBackground(TemaWarna.APPLE_BLACK);
+        tabelKatalog.getTableHeader().setForeground(TemaWarna.TEKS_PUTIH);
+        tabelKatalog.setGridColor(TemaWarna.BORDER_DIVIDER);
+        tabelKatalog.setSelectionBackground(TemaWarna.APPLE_BLUE);
+        tabelKatalog.setSelectionForeground(TemaWarna.TEKS_PUTIH);
         tabelKatalog.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         muatTabelKatalog();
 
-        panel.add(new JScrollPane(tabelKatalog), BorderLayout.CENTER);
+        JScrollPane scrollKatalog = new JScrollPane(tabelKatalog);
+        scrollKatalog.getViewport().setBackground(Color.WHITE);
+        scrollKatalog.setBorder(BorderFactory.createLineBorder(TemaWarna.BORDER_DIVIDER));
+        panel.add(scrollKatalog, BorderLayout.CENTER);
 
-        // Button Toolbar Bawah Katalog: Palet satu rasi (Slate Navy Cohesive)
+        // Button Toolbar Bawah Katalog: Palet Apple Modern (#1D1D1F & #AAAAAA)
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        btnPanel.setBackground(TemaWarna.APPLE_CANVAS);
         ModernButton btnTambahKeranjang = new ModernButton("+ Keranjang", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnBaru = new ModernButton("+ Produk Baru", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnEdit = new ModernButton("Edit Produk", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
@@ -411,10 +428,15 @@ public class KasirDesktopFrame extends JFrame {
 
     private JPanel buatPanelKeranjang() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(TemaWarna.APPLE_CANVAS);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 10));
 
         JPanel customerPanel = new JPanel(new GridLayout(2, 2, 8, 6));
-        customerPanel.setBorder(BorderFactory.createTitledBorder("Informasi Konsumen & Member"));
+        customerPanel.setBackground(TemaWarna.APPLE_CANVAS);
+        customerPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(TemaWarna.BORDER_DIVIDER), "Informasi Konsumen & Member"),
+                BorderFactory.createEmptyBorder(4, 8, 6, 8)
+        ));
 
         customerPanel.add(new JLabel("Nama Pelanggan:"));
         txtNamaPelanggan = new JTextField("Pelanggan Umum");
@@ -438,12 +460,22 @@ public class KasirDesktopFrame extends JFrame {
         tabelKeranjang.setRowHeight(25);
         tabelKeranjang.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tabelKeranjang.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tabelKeranjang.getTableHeader().setBackground(TemaWarna.APPLE_BLACK);
+        tabelKeranjang.getTableHeader().setForeground(TemaWarna.TEKS_PUTIH);
+        tabelKeranjang.setGridColor(TemaWarna.BORDER_DIVIDER);
+        tabelKeranjang.setSelectionBackground(TemaWarna.APPLE_BLUE);
+        tabelKeranjang.setSelectionForeground(TemaWarna.TEKS_PUTIH);
 
-        panel.add(new JScrollPane(tabelKeranjang), BorderLayout.CENTER);
+        JScrollPane scrollKeranjang = new JScrollPane(tabelKeranjang);
+        scrollKeranjang.getViewport().setBackground(Color.WHITE);
+        scrollKeranjang.setBorder(BorderFactory.createLineBorder(TemaWarna.BORDER_DIVIDER));
+        panel.add(scrollKeranjang, BorderLayout.CENTER);
 
         JPanel bottomContainer = new JPanel(new BorderLayout(5, 5));
+        bottomContainer.setBackground(TemaWarna.APPLE_CANVAS);
 
         JPanel cartActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        cartActions.setBackground(TemaWarna.APPLE_CANVAS);
         ModernButton btnHapusItem = new ModernButton("Batalkan Item", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
         ModernButton btnResetTrx = new ModernButton("Reset Transaksi", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
 
@@ -462,8 +494,9 @@ public class KasirDesktopFrame extends JFrame {
         bottomContainer.add(cartActions, BorderLayout.NORTH);
 
         JPanel paymentPanel = new JPanel(new GridLayout(7, 2, 8, 4));
+        paymentPanel.setBackground(TemaWarna.APPLE_CANVAS);
         paymentPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Rincian Pembayaran Kasir (Pola Strategy)"),
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(TemaWarna.BORDER_DIVIDER), "Rincian Pembayaran Kasir (Pola Strategy)"),
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)
         ));
 
