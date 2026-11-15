@@ -387,9 +387,8 @@ public class KasirDesktopFrame extends JFrame {
         tabelKatalog = new JTable(modelKatalog);
         tabelKatalog.setRowHeight(25);
         tabelKatalog.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tabelKatalog.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tabelKatalog.getTableHeader().setBackground(TemaWarna.APPLE_BLACK);
-        tabelKatalog.getTableHeader().setForeground(TemaWarna.TEKS_PUTIH);
+        tabelKatalog.getTableHeader().setPreferredSize(new Dimension(0, 32));
+        tabelKatalog.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
         tabelKatalog.setGridColor(TemaWarna.BORDER_DIVIDER);
         tabelKatalog.setSelectionBackground(TemaWarna.APPLE_BLUE);
         tabelKatalog.setSelectionForeground(TemaWarna.TEKS_PUTIH);
@@ -459,9 +458,8 @@ public class KasirDesktopFrame extends JFrame {
         tabelKeranjang = new JTable(modelKeranjang);
         tabelKeranjang.setRowHeight(25);
         tabelKeranjang.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tabelKeranjang.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tabelKeranjang.getTableHeader().setBackground(TemaWarna.APPLE_BLACK);
-        tabelKeranjang.getTableHeader().setForeground(TemaWarna.TEKS_PUTIH);
+        tabelKeranjang.getTableHeader().setPreferredSize(new Dimension(0, 32));
+        tabelKeranjang.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
         tabelKeranjang.setGridColor(TemaWarna.BORDER_DIVIDER);
         tabelKeranjang.setSelectionBackground(TemaWarna.APPLE_BLUE);
         tabelKeranjang.setSelectionForeground(TemaWarna.TEKS_PUTIH);
@@ -1171,6 +1169,11 @@ public class KasirDesktopFrame extends JFrame {
 
         DefaultTableModel modelTop = new DefaultTableModel(new String[]{"No", "Kode", "Nama Produk", "Total Terjual (Unit)"}, 0);
         JTable tblTop = new JTable(modelTop);
+        tblTop.setRowHeight(25);
+        tblTop.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tblTop.getTableHeader().setPreferredSize(new Dimension(0, 32));
+        tblTop.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
+        tblTop.setGridColor(TemaWarna.BORDER_DIVIDER);
 
         Runnable muatLaporan = () -> {
             try {
@@ -1229,6 +1232,11 @@ public class KasirDesktopFrame extends JFrame {
             "ID Transaksi", "Waktu", "Pelanggan", "Member", "Total Bayar", "Status", "Kasir"
         }, 0);
         JTable tblTrx = new JTable(modelTrx);
+        tblTrx.setRowHeight(25);
+        tblTrx.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tblTrx.getTableHeader().setPreferredSize(new Dimension(0, 32));
+        tblTrx.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
+        tblTrx.setGridColor(TemaWarna.BORDER_DIVIDER);
         tblTrx.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         Runnable refreshData = () -> {

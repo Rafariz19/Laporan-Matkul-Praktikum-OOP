@@ -153,9 +153,11 @@ public class DialogPengaturan extends JDialog {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         tabelDiskon = new JTable(modelDiskon);
-        tabelDiskon.setRowHeight(24);
+        tabelDiskon.setRowHeight(25);
         tabelDiskon.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tabelDiskon.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tabelDiskon.getTableHeader().setPreferredSize(new Dimension(0, 32));
+        tabelDiskon.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
+        tabelDiskon.setGridColor(TemaWarna.BORDER_DIVIDER);
         muatDataTabelDiskon();
 
         pnlDiskon.add(new JScrollPane(tabelDiskon), BorderLayout.CENTER);
