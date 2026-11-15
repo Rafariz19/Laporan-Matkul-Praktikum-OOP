@@ -122,26 +122,26 @@ public class DialogPengaturan extends JDialog {
 
         pnlTampilan.add(formTampilan, BorderLayout.NORTH);
 
-        // Presets Color Themes
-        JPanel pnlPreset = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
+        // Presets Color Themes (4 Tema Warna Profesional Pilihan)
+        JPanel pnlPreset = new JPanel(new GridLayout(2, 2, 10, 8));
         pnlPreset.setBorder(BorderFactory.createTitledBorder("Pilihan Tema Warna Profesional Cepat"));
 
-        ModernButton btnThemeApple = new ModernButton("Apple Modern", TemaWarna.APPLE_BLACK, Color.WHITE);
+        ModernButton btnThemeApple = new ModernButton("🍎 Apple Modern", TemaWarna.APPLE_BLACK, TemaWarna.APPLE_BLUE);
         btnThemeApple.addActionListener(e -> terapkanPreset(TemaWarna.APPLE_BLACK, TemaWarna.APPLE_BLUE));
 
-        ModernButton btnThemeNavy = new ModernButton("Navy Sapphire", new Color(27, 54, 93), Color.WHITE);
-        btnThemeNavy.addActionListener(e -> terapkanPreset(new Color(27, 54, 93), new Color(0, 150, 136)));
+        ModernButton btnThemeAmazon = new ModernButton("📦 Amazon Prime", TemaWarna.AMAZON_NAVY, TemaWarna.AMAZON_ORANGE);
+        btnThemeAmazon.addActionListener(e -> terapkanPreset(TemaWarna.AMAZON_NAVY, TemaWarna.AMAZON_ORANGE));
 
-        ModernButton btnThemeCharcoal = new ModernButton("Modern Charcoal", new Color(44, 62, 80), Color.WHITE);
-        btnThemeCharcoal.addActionListener(e -> terapkanPreset(new Color(44, 62, 80), new Color(52, 152, 219)));
+        ModernButton btnThemeMandela = new ModernButton("🔥 Mandela Orange", TemaWarna.MANDELA_BLACK, TemaWarna.MANDELA_ORANGE);
+        btnThemeMandela.addActionListener(e -> terapkanPreset(TemaWarna.MANDELA_BLACK, TemaWarna.MANDELA_ORANGE));
 
-        ModernButton btnThemeCrimson = new ModernButton("Crimson Wine", new Color(120, 20, 30), Color.WHITE);
-        btnThemeCrimson.addActionListener(e -> terapkanPreset(new Color(120, 20, 30), new Color(230, 126, 34)));
+        ModernButton btnThemeCyber = new ModernButton("⚡ Cyber Lime", TemaWarna.CYBER_FOREST, TemaWarna.CYBER_LIME);
+        btnThemeCyber.addActionListener(e -> terapkanPreset(TemaWarna.CYBER_FOREST, TemaWarna.CYBER_LIME));
 
         pnlPreset.add(btnThemeApple);
-        pnlPreset.add(btnThemeNavy);
-        pnlPreset.add(btnThemeCharcoal);
-        pnlPreset.add(btnThemeCrimson);
+        pnlPreset.add(btnThemeAmazon);
+        pnlPreset.add(btnThemeMandela);
+        pnlPreset.add(btnThemeCyber);
         pnlTampilan.add(pnlPreset, BorderLayout.CENTER);
 
         tabbedPane.addTab("🎨 Tampilan & Teks Header", pnlTampilan);
