@@ -69,6 +69,10 @@ public class KasirDesktopFrame extends JFrame {
     private JLabel lblTitle;
     private JLabel lblSub;
     private ModernButton btnBayar;
+    private ModernButton btnPengaturan;
+    private ModernButton btnLaporan;
+    private ModernButton btnRiwayatVoid;
+    private ModernButton btnGantiAkun;
 
     @SuppressWarnings("this-escape")
     public KasirDesktopFrame() {
@@ -238,21 +242,21 @@ public class KasirDesktopFrame extends JFrame {
 
         lblUserBadge = new JLabel(currentUser.getUsername() + " [" + currentUser.getRole() + "]");
         lblUserBadge.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblUserBadge.setForeground(TemaWarna.BADGE_KASIR);
+        lblUserBadge.setForeground(pengaturanSistem.getWarnaAksen());
 
-        ModernButton btnPengaturan = new ModernButton("⚙️ Pengaturan", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
+        btnPengaturan = new ModernButton("⚙️ Pengaturan", pengaturanSistem.getWarnaAksen(), TemaWarna.TEKS_PUTIH);
         btnPengaturan.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnPengaturan.addActionListener(e -> aksiBukaDialogPengaturan());
 
-        ModernButton btnLaporan = new ModernButton("📊 Laporan Harian", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
+        btnLaporan = new ModernButton("📊 Laporan Harian", pengaturanSistem.getWarnaAksen(), TemaWarna.TEKS_PUTIH);
         btnLaporan.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnLaporan.addActionListener(e -> aksiBukaLaporanHarian());
 
-        ModernButton btnRiwayatVoid = new ModernButton("📜 Riwayat / VOID", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
+        btnRiwayatVoid = new ModernButton("📜 Riwayat / VOID", pengaturanSistem.getWarnaAksen(), TemaWarna.TEKS_PUTIH);
         btnRiwayatVoid.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnRiwayatVoid.addActionListener(e -> aksiBukaRiwayatVoid());
 
-        ModernButton btnGantiAkun = new ModernButton("👤 Ganti Akun", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
+        btnGantiAkun = new ModernButton("👤 Ganti Akun", pengaturanSistem.getWarnaAksen(), TemaWarna.TEKS_PUTIH);
         btnGantiAkun.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnGantiAkun.addActionListener(e -> {
             prosesLoginAwal();
@@ -303,6 +307,33 @@ public class KasirDesktopFrame extends JFrame {
         headerPanel.setBackground(pengaturanSistem.getWarnaHeader());
         setTitle(pengaturanSistem.getJudulAplikasi() + " - " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
         
+        // Terapkan WARNA AKSEN secara dinamis ke seluruh elemen aksen UI
+        Color aksen = pengaturanSistem.getWarnaAksen();
+        if (lblUserBadge != null) {
+            lblUserBadge.setForeground(aksen);
+        }
+        if (btnPengaturan != null) {
+            btnPengaturan.setCustomColors(aksen, TemaWarna.TEKS_PUTIH);
+        }
+        if (btnLaporan != null) {
+            btnLaporan.setCustomColors(aksen, TemaWarna.TEKS_PUTIH);
+        }
+        if (btnRiwayatVoid != null) {
+            btnRiwayatVoid.setCustomColors(aksen, TemaWarna.TEKS_PUTIH);
+        }
+        if (btnGantiAkun != null) {
+            btnGantiAkun.setCustomColors(aksen, TemaWarna.TEKS_PUTIH);
+        }
+        if (btnBayar != null) {
+            btnBayar.setCustomColors(aksen, TemaWarna.TEKS_PUTIH);
+        }
+        if (tabelKatalog != null) {
+            tabelKatalog.setSelectionBackground(aksen);
+        }
+        if (tabelKeranjang != null) {
+            tabelKeranjang.setSelectionBackground(aksen);
+        }
+
         // Perbarui pilihan membership di ComboBox
         updateComboBoxMember();
         if (transaksiAktif != null) {
@@ -390,7 +421,7 @@ public class KasirDesktopFrame extends JFrame {
         tabelKatalog.getTableHeader().setPreferredSize(new Dimension(0, 32));
         tabelKatalog.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
         tabelKatalog.setGridColor(TemaWarna.BORDER_DIVIDER);
-        tabelKatalog.setSelectionBackground(TemaWarna.APPLE_BLUE);
+        tabelKatalog.setSelectionBackground(pengaturanSistem.getWarnaAksen());
         tabelKatalog.setSelectionForeground(TemaWarna.TEKS_PUTIH);
         tabelKatalog.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         muatTabelKatalog();
@@ -461,7 +492,7 @@ public class KasirDesktopFrame extends JFrame {
         tabelKeranjang.getTableHeader().setPreferredSize(new Dimension(0, 32));
         tabelKeranjang.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
         tabelKeranjang.setGridColor(TemaWarna.BORDER_DIVIDER);
-        tabelKeranjang.setSelectionBackground(TemaWarna.APPLE_BLUE);
+        tabelKeranjang.setSelectionBackground(pengaturanSistem.getWarnaAksen());
         tabelKeranjang.setSelectionForeground(TemaWarna.TEKS_PUTIH);
 
         JScrollPane scrollKeranjang = new JScrollPane(tabelKeranjang);
@@ -543,7 +574,7 @@ public class KasirDesktopFrame extends JFrame {
 
         bottomContainer.add(paymentPanel, BorderLayout.CENTER);
 
-        btnBayar = new ModernButton("BAYAR & PROSES CHECKOUT", TemaWarna.TOMBOL_CHECKOUT, TemaWarna.TEKS_PUTIH);
+        btnBayar = new ModernButton("BAYAR & PROSES CHECKOUT", pengaturanSistem.getWarnaAksen(), TemaWarna.TEKS_PUTIH);
         btnBayar.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btnBayar.setPreferredSize(new Dimension(0, 42));
         btnBayar.addActionListener(e -> aksiProsesPembayaran());

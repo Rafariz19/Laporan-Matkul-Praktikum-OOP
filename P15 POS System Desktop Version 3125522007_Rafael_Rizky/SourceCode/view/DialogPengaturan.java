@@ -36,6 +36,7 @@ public class DialogPengaturan extends JDialog {
 
     private DefaultTableModel modelDiskon;
     private JTable tabelDiskon;
+    private ModernButton btnSimpanSemua;
 
     @SuppressWarnings("this-escape")
     public DialogPengaturan(KasirDesktopFrame parent, PengaturanSistem config, User currentUser) {
@@ -106,6 +107,9 @@ public class DialogPengaturan extends JDialog {
             if (c != null) {
                 selectedAccentColor = c;
                 pnlAccentPreview.setBackground(c);
+                if (btnSimpanSemua != null) {
+                    btnSimpanSemua.setCustomColors(c, TemaWarna.TEKS_PUTIH);
+                }
             }
         });
         pnlCol2.add(pnlAccentPreview);
@@ -187,7 +191,7 @@ public class DialogPengaturan extends JDialog {
         ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
         btnBatal.addActionListener(e -> dispose());
 
-        ModernButton btnSimpanSemua = new ModernButton("💾 Simpan Pengaturan", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        btnSimpanSemua = new ModernButton("💾 Simpan Pengaturan", selectedAccentColor, TemaWarna.TEKS_PUTIH);
         btnSimpanSemua.addActionListener(e -> aksiSimpanSemua());
 
         pnlBottom.add(btnBatal);
@@ -200,6 +204,9 @@ public class DialogPengaturan extends JDialog {
         this.selectedAccentColor = accent;
         pnlHeaderPreview.setBackground(header);
         pnlAccentPreview.setBackground(accent);
+        if (btnSimpanSemua != null) {
+            btnSimpanSemua.setCustomColors(accent, TemaWarna.TEKS_PUTIH);
+        }
     }
 
     private void muatDataTabelDiskon() {
