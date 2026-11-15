@@ -83,7 +83,7 @@ public class DialogPengaturan extends JDialog {
         pnlHeaderPreview.setPreferredSize(new Dimension(35, 24));
         pnlHeaderPreview.setBackground(selectedHeaderColor);
         pnlHeaderPreview.setBorder(BorderFactory.createLineBorder(Color.GRAY));
-        ModernButton btnPilihHeader = new ModernButton("Pilih", new Color(41, 128, 185), Color.WHITE);
+        ModernButton btnPilihHeader = new ModernButton("Pilih", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         btnPilihHeader.addActionListener(e -> {
             Color c = JColorChooser.showDialog(this, "Pilih Warna Header", selectedHeaderColor);
             if (c != null) {
@@ -100,7 +100,7 @@ public class DialogPengaturan extends JDialog {
         pnlAccentPreview.setPreferredSize(new Dimension(35, 24));
         pnlAccentPreview.setBackground(selectedAccentColor);
         pnlAccentPreview.setBorder(BorderFactory.createLineBorder(Color.GRAY));
-        ModernButton btnPilihAksen = new ModernButton("Pilih", new Color(39, 174, 96), Color.WHITE);
+        ModernButton btnPilihAksen = new ModernButton("Pilih", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         btnPilihAksen.addActionListener(e -> {
             Color c = JColorChooser.showDialog(this, "Pilih Warna Aksen", selectedAccentColor);
             if (c != null) {
@@ -161,9 +161,9 @@ public class DialogPengaturan extends JDialog {
         pnlDiskon.add(new JScrollPane(tabelDiskon), BorderLayout.CENTER);
 
         JPanel pnlActionDiskon = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
-        ModernButton btnTambahDiskon = new ModernButton("+ Tambah Diskon", new Color(39, 174, 96), Color.WHITE);
-        ModernButton btnEditDiskon = new ModernButton("Edit Nilai Diskon", new Color(41, 128, 185), Color.WHITE);
-        ModernButton btnHapusDiskon = new ModernButton("Hapus Diskon", new Color(192, 57, 43), Color.WHITE);
+        ModernButton btnTambahDiskon = new ModernButton("+ Tambah Diskon", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnEditDiskon = new ModernButton("Edit Nilai Diskon", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnHapusDiskon = new ModernButton("Hapus Diskon", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
 
         btnTambahDiskon.addActionListener(e -> aksiTambahDiskon());
         btnEditDiskon.addActionListener(e -> aksiEditDiskon());
@@ -182,10 +182,10 @@ public class DialogPengaturan extends JDialog {
         JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         pnlBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 220, 220)));
 
-        ModernButton btnBatal = new ModernButton("Batal", new Color(127, 140, 141), Color.WHITE);
+        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
         btnBatal.addActionListener(e -> dispose());
 
-        ModernButton btnSimpanSemua = new ModernButton("💾 Simpan Pengaturan", new Color(40, 167, 69), Color.WHITE);
+        ModernButton btnSimpanSemua = new ModernButton("💾 Simpan Pengaturan", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         btnSimpanSemua.addActionListener(e -> aksiSimpanSemua());
 
         pnlBottom.add(btnBatal);

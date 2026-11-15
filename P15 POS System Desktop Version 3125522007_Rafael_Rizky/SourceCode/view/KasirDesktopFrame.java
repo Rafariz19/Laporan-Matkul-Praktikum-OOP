@@ -240,19 +240,19 @@ public class KasirDesktopFrame extends JFrame {
         lblUserBadge.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblUserBadge.setForeground(new Color(255, 230, 100));
 
-        ModernButton btnPengaturan = new ModernButton("⚙️ Pengaturan", new Color(142, 68, 173), Color.WHITE);
+        ModernButton btnPengaturan = new ModernButton("⚙️ Pengaturan", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
         btnPengaturan.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnPengaturan.addActionListener(e -> aksiBukaDialogPengaturan());
 
-        ModernButton btnLaporan = new ModernButton("📊 Laporan Harian", new Color(41, 128, 185), Color.WHITE);
+        ModernButton btnLaporan = new ModernButton("📊 Laporan Harian", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
         btnLaporan.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnLaporan.addActionListener(e -> aksiBukaLaporanHarian());
 
-        ModernButton btnRiwayatVoid = new ModernButton("📜 Riwayat / VOID", new Color(211, 84, 0), Color.WHITE);
+        ModernButton btnRiwayatVoid = new ModernButton("📜 Riwayat / VOID", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
         btnRiwayatVoid.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnRiwayatVoid.addActionListener(e -> aksiBukaRiwayatVoid());
 
-        ModernButton btnGantiAkun = new ModernButton("👤 Ganti Akun", new Color(52, 73, 94), Color.WHITE);
+        ModernButton btnGantiAkun = new ModernButton("👤 Ganti Akun", TemaWarna.TOMBOL_HEADER, TemaWarna.TEKS_PUTIH);
         btnGantiAkun.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnGantiAkun.addActionListener(e -> {
             prosesLoginAwal();
@@ -354,8 +354,8 @@ public class KasirDesktopFrame extends JFrame {
 
         searchPanel.add(new JLabel("Cari:"));
         txtCari = new JTextField(9);
-        ModernButton btnCari = new ModernButton("Cari", new Color(41, 128, 185), Color.WHITE);
-        ModernButton btnReset = new ModernButton("Reset", new Color(108, 117, 125), Color.WHITE);
+        ModernButton btnCari = new ModernButton("Cari", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnReset = new ModernButton("Reset", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
 
         btnCari.addActionListener(e -> filterKatalog(txtCari.getText()));
         btnReset.addActionListener(e -> { txtCari.setText(""); muatTabelKatalog(); });
@@ -385,13 +385,13 @@ public class KasirDesktopFrame extends JFrame {
 
         panel.add(new JScrollPane(tabelKatalog), BorderLayout.CENTER);
 
-        // Button Toolbar Bawah Katalog: FlowLayout responsif yang muat rapi di segala resolusi
+        // Button Toolbar Bawah Katalog: Palet satu rasi (Slate Navy Cohesive)
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        ModernButton btnTambahKeranjang = new ModernButton("+ Keranjang", new Color(39, 174, 96), Color.WHITE);
-        ModernButton btnBaru = new ModernButton("+ Produk Baru", new Color(41, 128, 185), Color.WHITE);
-        ModernButton btnEdit = new ModernButton("Edit Produk", new Color(22, 160, 133), Color.WHITE);
-        ModernButton btnHapus = new ModernButton("Hapus", new Color(192, 57, 43), Color.WHITE);
-        ModernButton btnSimpanKatalog = new ModernButton("💾 Simpan File", new Color(52, 73, 94), Color.WHITE);
+        ModernButton btnTambahKeranjang = new ModernButton("+ Keranjang", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnBaru = new ModernButton("+ Produk Baru", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnEdit = new ModernButton("Edit Produk", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnHapus = new ModernButton("Hapus", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnSimpanKatalog = new ModernButton("💾 Simpan File", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
 
         btnTambahKeranjang.addActionListener(e -> aksiTambahKeKeranjang());
         btnBaru.addActionListener(e -> aksiBukaDialogProdukBaru());
@@ -444,8 +444,8 @@ public class KasirDesktopFrame extends JFrame {
         JPanel bottomContainer = new JPanel(new BorderLayout(5, 5));
 
         JPanel cartActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
-        ModernButton btnHapusItem = new ModernButton("Batalkan Item Terpilih", new Color(192, 57, 43), Color.WHITE);
-        ModernButton btnResetTrx = new ModernButton("Reset Transaksi", new Color(108, 117, 125), Color.WHITE);
+        ModernButton btnHapusItem = new ModernButton("Batalkan Item", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
+        ModernButton btnResetTrx = new ModernButton("Reset Transaksi", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
 
         btnHapusItem.addActionListener(e -> aksiBatalkanItemKeranjang());
         btnResetTrx.addActionListener(e -> {
@@ -512,7 +512,7 @@ public class KasirDesktopFrame extends JFrame {
 
         bottomContainer.add(paymentPanel, BorderLayout.CENTER);
 
-        btnBayar = new ModernButton("BAYAR & PROSES CHECKOUT", new Color(39, 174, 96), Color.WHITE);
+        btnBayar = new ModernButton("BAYAR & PROSES CHECKOUT", TemaWarna.TOMBOL_CHECKOUT, TemaWarna.TEKS_PUTIH);
         btnBayar.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btnBayar.setPreferredSize(new Dimension(0, 42));
         btnBayar.addActionListener(e -> aksiProsesPembayaran());
@@ -850,9 +850,9 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(new JScrollPane(ta), BorderLayout.CENTER);
 
         JPanel pnlAksiStruk = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
-        ModernButton btnCetakKertas = new ModernButton("🖨️ Cetak ke Printer", new Color(41, 128, 185), Color.WHITE);
-        ModernButton btnEksporFile = new ModernButton("💾 Simpan Berkas Teks", new Color(39, 174, 96), Color.WHITE);
-        ModernButton btnTutup = new ModernButton("Selesai / Tutup", new Color(108, 117, 125), Color.WHITE);
+        ModernButton btnCetakKertas = new ModernButton("🖨️ Cetak ke Printer", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnEksporFile = new ModernButton("💾 Simpan Berkas Teks", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnTutup = new ModernButton("Selesai / Tutup", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
 
         btnCetakKertas.addActionListener(e -> {
             try {
@@ -953,11 +953,11 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
-        ModernButton btnBatal = new ModernButton("Batal", new Color(108, 117, 125), Color.WHITE);
+        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
         btnBatal.addActionListener(e -> dlg.dispose());
         dlg.add(btnBatal);
 
-        ModernButton btnSimpan = new ModernButton("Simpan Perubahan", new Color(39, 174, 96), Color.WHITE);
+        ModernButton btnSimpan = new ModernButton("Simpan Perubahan", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         btnSimpan.addActionListener(e -> {
             try {
                 int hargaBaru = Integer.parseInt(txtHarga.getText().trim());
@@ -1025,11 +1025,11 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
-        ModernButton btnBatal = new ModernButton("Batal", new Color(108, 117, 125), Color.WHITE);
+        ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
         btnBatal.addActionListener(e -> dlg.dispose());
         dlg.add(btnBatal);
 
-        ModernButton btnSimpan = new ModernButton("Daftarkan Produk", new Color(39, 174, 96), Color.WHITE);
+        ModernButton btnSimpan = new ModernButton("Daftarkan Produk", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         btnSimpan.addActionListener(e -> {
             try {
                 String kode = txtKode.getText().trim();
@@ -1124,7 +1124,7 @@ public class KasirDesktopFrame extends JFrame {
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         String tglDefault = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
         JTextField txtTgl = new JTextField(tglDefault, 10);
-        ModernButton btnFilter = new ModernButton("Tampilkan Laporan", new Color(41, 128, 185), Color.WHITE);
+        ModernButton btnFilter = new ModernButton("Tampilkan Laporan", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
 
         topBar.add(new JLabel("Pilih Tanggal Transaksi (DD-MM-YYYY):"));
         topBar.add(txtTgl);
@@ -1178,7 +1178,7 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(tabs, BorderLayout.CENTER);
 
         JPanel pnlBawah = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        ModernButton btnTutup = new ModernButton("Tutup", new Color(108, 117, 125), Color.WHITE);
+        ModernButton btnTutup = new ModernButton("Tutup", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_PUTIH);
         btnTutup.addActionListener(e -> dlg.dispose());
         pnlBawah.add(btnTutup);
         dlg.add(pnlBawah, BorderLayout.SOUTH);
@@ -1214,8 +1214,8 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(new JScrollPane(tblTrx), BorderLayout.CENTER);
 
         JPanel pnlAksi = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        ModernButton btnRincian = new ModernButton("Lihat Rincian Item", new Color(41, 128, 185), Color.WHITE);
-        ModernButton btnVoid = new ModernButton("⚠️ VOID Nota Lunas", new Color(192, 57, 43), Color.WHITE);
+        ModernButton btnRincian = new ModernButton("Lihat Rincian Item", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnVoid = new ModernButton("⚠️ VOID Nota Lunas", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
 
         btnRincian.addActionListener(e -> {
             int row = tblTrx.getSelectedRow();
