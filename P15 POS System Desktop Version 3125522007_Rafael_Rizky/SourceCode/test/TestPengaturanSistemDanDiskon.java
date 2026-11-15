@@ -1,20 +1,19 @@
 package test;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 import model.Pelanggan;
 import model.PengaturanSistem;
+import model.ProfilPengaturan;
 
 /**
  * TestPengaturanSistemDanDiskon:
- * Menguji fitur Fase 4:
+ * Menguji fitur Fase 4 & 5:
  * 1. CRUD Judul Aplikasi & Subtitle Identitas Sistem Kasir.
  * 2. CRUD Skema Diskon Keanggotaan (Tambah tipe member baru, edit nilai diskon, hapus diskon).
  * 3. Integrasi Pelanggan dengan PengaturanSistem (menghitung diskon kustom secara dinamis).
  * 4. Persistensi Crash-Safe ke file data/settings.txt dan muat ulang saat startup.
+ * 5. Multi-Profile / Template Pengaturan (CRUD Template Settingan & Switch Profil).
  */
 public class TestPengaturanSistemDanDiskon {
     public static void main(String[] args) {
@@ -85,19 +84,57 @@ public class TestPengaturanSistemDanDiskon {
         }
         System.out.println("  4. Integrasi Pelanggan dengan PengaturanSistem terverifikasi: Diskon PLATINUM = Rp " + potongan);
 
-        // 5. Uji Persistensi ke Disk dan Muat Ulang
+        // 5. Uji Multi-Profile / Template Settingan (Fase 5)
+        config.buatProfilBaruDariAktif("Settingan 2");
+        if (!"Settingan 2".equals(config.getNamaProfilAktif())) {
+            throw new AssertionError("Gagal mengaktifkan template Settingan 2!");
+        }
+
+        // Modifikasi Settingan 2 dengan title beda dan diskon beda
+        config.setJudulAplikasi("SUPERMARKET CABANG MALANG");
+        config.simpanDiskonMember("VIP", 0.40); // 40%
+        if (!"SUPERMARKET CABANG MALANG".equals(config.getJudulAplikasi()) || Math.abs(config.getDiskon("VIP") - 0.40) > 0.001) {
+            throw new AssertionError("Gagal modifikasi Settingan 2!");
+        }
+
+        // Switch kembali ke profil lama "Settingan 1"
+        config.aktifkanProfil("Settingan 1");
+        if (!judulBaru.equals(config.getJudulAplikasi())) {
+            throw new AssertionError("Gagal switch kembali ke Settingan 1! Didapat judul: " + config.getJudulAplikasi());
+        }
+        if (Math.abs(config.getDiskon("VIP") - 0.15) > 0.001) {
+            throw new AssertionError("Gagal memulihkan diskon VIP di Settingan 1!");
+        }
+
+        // Switch lagi ke "Settingan 2"
+        config.aktifkanProfil("Settingan 2");
+        if (!"SUPERMARKET CABANG MALANG".equals(config.getJudulAplikasi()) || Math.abs(config.getDiskon("VIP") - 0.40) > 0.001) {
+            throw new AssertionError("Gagal switch kembali ke Settingan 2!");
+        }
+        System.out.println("  5. Multi-Profile Template CRUD & Switching terverifikasi penuh.");
+
+        // 6. Uji Persistensi Multi-Profile ke Disk dan Muat Ulang
         try {
             config.simpanKeFile();
             PengaturanSistem configMuat = new PengaturanSistem();
             configMuat.muatDariFile();
 
-            if (!judulBaru.equals(configMuat.getJudulAplikasi())) {
-                throw new AssertionError("Gagal simpan/muat judul dari file!");
+            if (!"Settingan 2".equals(configMuat.getNamaProfilAktif())) {
+                throw new AssertionError("Gagal simpan/muat active profile!");
             }
-            if (Math.abs(configMuat.getDiskon("PLATINUM") - 0.25) > 0.001) {
-                throw new AssertionError("Gagal simpan/muat diskon PLATINUM dari file!");
+            if (!"SUPERMARKET CABANG MALANG".equals(configMuat.getJudulAplikasi())) {
+                throw new AssertionError("Gagal simpan/muat judul Settingan 2 dari file!");
             }
-            System.out.println("  5. Persistensi Crash-Safe data/settings.txt dan muat ulang berhasil 100%.");
+            if (Math.abs(configMuat.getDiskon("VIP") - 0.40) > 0.001) {
+                throw new AssertionError("Gagal simpan/muat diskon VIP 40% Settingan 2!");
+            }
+
+            // Buktikan Settingan 1 juga ada di file hasil muat
+            ProfilPengaturan prof1 = configMuat.getProfil("Settingan 1");
+            if (prof1 == null || !judulBaru.equals(prof1.getJudulAplikasi())) {
+                throw new AssertionError("Gagal memuat template Settingan 1 dari file!");
+            }
+            System.out.println("  6. Persistensi Multi-Profile data/settings.txt dan muat ulang berhasil 100%.");
         } catch (IOException e) {
             throw new RuntimeException("Gagal simpan ke file: " + e.getMessage(), e);
         }

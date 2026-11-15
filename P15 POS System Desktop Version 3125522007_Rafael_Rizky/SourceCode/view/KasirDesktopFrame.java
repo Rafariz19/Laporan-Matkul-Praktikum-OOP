@@ -112,46 +112,20 @@ public class KasirDesktopFrame extends JFrame {
 
     private void prosesLoginAwal() {
         if (authService.isUsersFileEmpty()) {
-            JPasswordField pwdAdmin = new JPasswordField(15);
-            JPanel pnl = new JPanel(new GridLayout(3, 1, 5, 5));
-            pnl.add(new JLabel("First-Run Setup: Berkas data/users.txt belum memiliki akun."));
-            pnl.add(new JLabel("Buat Password untuk Akun Administrator ('admin'):"));
-            pnl.add(pwdAdmin);
-
-            int opt = JOptionPane.showConfirmDialog(null, pnl, "Setup Akun Administrator", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-            String pwdStr = new String(pwdAdmin.getPassword()).trim();
-            if (opt != JOptionPane.OK_OPTION || pwdStr.isEmpty()) {
-                pwdStr = "admin123";
-            }
             try {
-                authService.inisialisasiAdminAwal(pwdStr);
+                authService.inisialisasiAdminAwal("admin123");
                 authService.register("kasir", "kasir123", Role.KASIR);
             } catch (Exception ex) {
                 System.err.println("Gagal setup admin awal: " + ex.getMessage());
             }
         }
 
-        boolean sukses = false;
-        while (!sukses) {
-            JTextField txtUser = new JTextField("admin", 15);
-            JPasswordField txtPass = new JPasswordField(15);
-            JPanel pnlLogin = new JPanel(new GridLayout(4, 1, 5, 5));
-            pnlLogin.add(new JLabel("Username:"));
-            pnlLogin.add(txtUser);
-            pnlLogin.add(new JLabel("Password:"));
-            pnlLogin.add(txtPass);
+        DialogLogin dlg = new DialogLogin(this, authService);
+        dlg.setVisible(true);
 
-            int opt = JOptionPane.showConfirmDialog(null, pnlLogin, "Login Sistem Kasir POS", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-            if (opt != JOptionPane.OK_OPTION) {
-                System.exit(0);
-            }
-
-            try {
-                this.currentUser = authService.login(txtUser.getText(), new String(txtPass.getPassword()));
-                sukses = true;
-            } catch (KasirException e) {
-                JOptionPane.showMessageDialog(null, e.getMessage(), "Gagal Otentikasi", JOptionPane.ERROR_MESSAGE);
-            }
+        this.currentUser = dlg.getAuthenticatedUser();
+        if (this.currentUser == null) {
+            System.exit(0);
         }
 
         if (lblUserBadge != null) {

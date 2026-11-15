@@ -2,6 +2,7 @@ package view;
 
 import model.AuthService;
 import model.PengaturanSistem;
+import model.ProfilPengaturan;
 import model.User;
 import model.exception.AksesDitolakException;
 
@@ -9,14 +10,16 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * DialogPengaturan - Modal Dialog CRUD Pengaturan Sistem Kasir (Fase 4)
+ * DialogPengaturan - Modal Dialog CRUD Pengaturan Sistem & Template Settingan (Fase 4 & 5)
  * Memfasilitasi:
- * 1. CRUD Judul Aplikasi & Subtitle (PBO 2026 | Rafael Rizky...).
- * 2. Pemilihan Skema Warna Tema (Header Background & Aksen).
- * 3. CRUD Diskon Membership (Tambah, Edit, Hapus tipe member dan nilai diskonnya).
+ * 1. Multi-Template / Profil Pengaturan (Simpan Template Baru, Switch Template, Hapus Template).
+ * 2. CRUD Judul Aplikasi & Subtitle Identitas.
+ * 3. Pemilihan Skema Warna Tema (Header, Aksen, & 4 Preset Resmi).
+ * 4. CRUD Diskon Membership (Tambah, Edit, Hapus tipe member dan nilai diskonnya).
  * 
  * Mahasiswa: Rafael Rizky Luga Tanjung (NRP: 3125522007) - PENS PSDKU Sumenep (2026)
  */
@@ -27,6 +30,11 @@ public class DialogPengaturan extends JDialog {
     private final transient User currentUser;
     private final transient KasirDesktopFrame parentFrame;
 
+    // Selector Template / Profil Settingan
+    private JComboBox<String> cmbProfil;
+    private boolean isSwitchingProfile = false;
+
+    // Komponen Form Tampilan
     private JTextField txtTitle;
     private JTextField txtSubtitle;
     private JPanel pnlHeaderPreview;
@@ -34,36 +42,90 @@ public class DialogPengaturan extends JDialog {
     private Color selectedHeaderColor;
     private Color selectedAccentColor;
 
+    // Komponen Form Diskon (Lokal per form)
     private DefaultTableModel modelDiskon;
     private JTable tabelDiskon;
+    private final transient Map<String, Double> localDiskonMap;
+
     private ModernButton btnSimpanSemua;
 
     @SuppressWarnings("this-escape")
     public DialogPengaturan(KasirDesktopFrame parent, PengaturanSistem config, User currentUser) {
-        super(parent, "⚙️ Pengaturan Tampilan & Skema Diskon Kasir", true);
+        super(parent, "⚙️ Pengaturan Tampilan & Template Sistem Kasir", true);
         this.parentFrame = parent;
         this.config = config;
         this.currentUser = currentUser;
 
         this.selectedHeaderColor = config.getWarnaHeader();
         this.selectedAccentColor = config.getWarnaAksen();
+        this.localDiskonMap = new LinkedHashMap<>(config.getDaftarDiskonMember());
 
         initUI();
     }
 
     private void initUI() {
-        setSize(650, 620);
+        setSize(700, 680);
         setLocationRelativeTo(parentFrame);
         setLayout(new BorderLayout(10, 10));
 
+        // 1. TOP PANEL: BILAH TEMPLATE / PROFIL SETTINGAN
+        JPanel pnlProfileBar = new JPanel(new BorderLayout(10, 5));
+        pnlProfileBar.setBackground(TemaWarna.APPLE_CANVAS);
+        pnlProfileBar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, TemaWarna.BORDER_DIVIDER),
+                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
+
+        JPanel pnlProfileLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
+        pnlProfileLeft.setOpaque(false);
+        JLabel lblProfile = new JLabel("📁 Template / Settingan Aktif:");
+        lblProfile.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblProfile.setForeground(TemaWarna.APPLE_BLACK);
+
+        cmbProfil = new JComboBox<>();
+        cmbProfil.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        muatComboProfil();
+        cmbProfil.addActionListener(e -> {
+            if (!isSwitchingProfile) {
+                String terpilih = (String) cmbProfil.getSelectedItem();
+                if (terpilih != null) {
+                    aksiSwitchProfil(terpilih);
+                }
+            }
+        });
+
+        pnlProfileLeft.add(lblProfile);
+        pnlProfileLeft.add(cmbProfil);
+
+        JPanel pnlProfileRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        pnlProfileRight.setOpaque(false);
+
+        ModernButton btnTambahTemplate = new ModernButton("+ Template Baru", TemaWarna.APPLE_BLUE, Color.WHITE);
+        btnTambahTemplate.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnTambahTemplate.addActionListener(e -> aksiTambahTemplateBaru());
+
+        ModernButton btnHapusTemplate = new ModernButton("Hapus Template", TemaWarna.TOMBOL_BATAL, Color.WHITE);
+        btnHapusTemplate.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnHapusTemplate.addActionListener(e -> aksiHapusTemplateTerpilih());
+
+        pnlProfileRight.add(btnTambahTemplate);
+        pnlProfileRight.add(btnHapusTemplate);
+
+        pnlProfileBar.add(pnlProfileLeft, BorderLayout.WEST);
+        pnlProfileBar.add(pnlProfileRight, BorderLayout.EAST);
+        add(pnlProfileBar, BorderLayout.NORTH);
+
+        // 2. CENTER PANEL: TABBED PANE (Tampilan & Diskon)
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
         // TAB 1: IDENTITAS & WARNA TAMPILAN
         JPanel pnlTampilan = new JPanel(new BorderLayout(10, 10));
+        pnlTampilan.setBackground(TemaWarna.APPLE_CANVAS);
         pnlTampilan.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         JPanel formTampilan = new JPanel(new GridLayout(6, 1, 8, 8));
+        formTampilan.setOpaque(false);
 
         formTampilan.add(new JLabel("Judul Aplikasi Sistem Kasir:"));
         txtTitle = new JTextField(config.getJudulAplikasi());
@@ -77,8 +139,10 @@ public class DialogPengaturan extends JDialog {
 
         // Color Picker Row: Header & Accent
         JPanel pnlWarnaContainer = new JPanel(new GridLayout(1, 2, 10, 10));
+        pnlWarnaContainer.setOpaque(false);
 
         JPanel pnlCol1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        pnlCol1.setOpaque(false);
         pnlCol1.add(new JLabel("Warna Header:"));
         pnlHeaderPreview = new JPanel();
         pnlHeaderPreview.setPreferredSize(new Dimension(35, 24));
@@ -96,6 +160,7 @@ public class DialogPengaturan extends JDialog {
         pnlCol1.add(btnPilihHeader);
 
         JPanel pnlCol2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        pnlCol2.setOpaque(false);
         pnlCol2.add(new JLabel("Warna Aksen:"));
         pnlAccentPreview = new JPanel();
         pnlAccentPreview.setPreferredSize(new Dimension(35, 24));
@@ -122,8 +187,9 @@ public class DialogPengaturan extends JDialog {
 
         pnlTampilan.add(formTampilan, BorderLayout.NORTH);
 
-        // Presets Color Themes (4 Tema Warna Profesional Pilihan)
+        // Presets Color Themes (4 Tema Warna Pilihan)
         JPanel pnlPreset = new JPanel(new GridLayout(2, 2, 10, 8));
+        pnlPreset.setBackground(TemaWarna.APPLE_CANVAS);
         pnlPreset.setBorder(BorderFactory.createTitledBorder("Pilihan Tema Warna Profesional Cepat"));
 
         ModernButton btnThemeApple = new ModernButton("🍎 Apple Modern", TemaWarna.APPLE_BLACK, TemaWarna.APPLE_BLUE);
@@ -148,6 +214,7 @@ public class DialogPengaturan extends JDialog {
 
         // TAB 2: CRUD SKEMA DISKON MEMBERSHIP
         JPanel pnlDiskon = new JPanel(new BorderLayout(8, 8));
+        pnlDiskon.setBackground(TemaWarna.APPLE_CANVAS);
         pnlDiskon.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         String[] cols = {"Tipe Keanggotaan (Member)", "Persentase Diskon (%)", "Nilai Desimal (0.0 - 1.0)"};
@@ -167,6 +234,7 @@ public class DialogPengaturan extends JDialog {
         pnlDiskon.add(new JScrollPane(tabelDiskon), BorderLayout.CENTER);
 
         JPanel pnlActionDiskon = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
+        pnlActionDiskon.setBackground(TemaWarna.APPLE_CANVAS);
         ModernButton btnTambahDiskon = new ModernButton("+ Tambah Diskon", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnEditDiskon = new ModernButton("Edit Nilai Diskon", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnHapusDiskon = new ModernButton("Hapus Diskon", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
@@ -184,9 +252,10 @@ public class DialogPengaturan extends JDialog {
 
         add(tabbedPane, BorderLayout.CENTER);
 
-        // BOTTOM ACTION BUTTONS
+        // 3. BOTTOM ACTION BUTTONS
         JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        pnlBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 220, 220)));
+        pnlBottom.setBackground(TemaWarna.APPLE_CANVAS);
+        pnlBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, TemaWarna.BORDER_DIVIDER));
 
         ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnBatal.addActionListener(e -> dispose());
@@ -197,6 +266,91 @@ public class DialogPengaturan extends JDialog {
         pnlBottom.add(btnBatal);
         pnlBottom.add(btnSimpanSemua);
         add(pnlBottom, BorderLayout.SOUTH);
+    }
+
+    private void muatComboProfil() {
+        isSwitchingProfile = true;
+        cmbProfil.removeAllItems();
+        for (String nama : config.getSemuaProfil().keySet()) {
+            cmbProfil.addItem(nama);
+        }
+        cmbProfil.setSelectedItem(config.getNamaProfilAktif());
+        isSwitchingProfile = false;
+    }
+
+    private void aksiSwitchProfil(String namaProfil) {
+        ProfilPengaturan p = config.getProfil(namaProfil);
+        if (p == null) return;
+
+        txtTitle.setText(p.getJudulAplikasi());
+        txtSubtitle.setText(p.getTeksHeaderSub());
+        this.selectedHeaderColor = p.getWarnaHeader();
+        this.selectedAccentColor = p.getWarnaAksen();
+        pnlHeaderPreview.setBackground(selectedHeaderColor);
+        pnlAccentPreview.setBackground(selectedAccentColor);
+
+        if (btnSimpanSemua != null) {
+            btnSimpanSemua.setCustomColors(selectedAccentColor, TemaWarna.getKontrasForeground(selectedAccentColor));
+        }
+
+        localDiskonMap.clear();
+        localDiskonMap.putAll(p.getDaftarDiskonMember());
+        muatDataTabelDiskon();
+    }
+
+    private void aksiTambahTemplateBaru() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Buat Template Pengaturan Baru");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Terbatas", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String namaBaru = JOptionPane.showInputDialog(this, 
+                "Masukkan Nama Template / Settingan Baru:\n(Contoh: 'Settingan 2', 'Promo Akhir Tahun', 'Toko Cabang 2')", 
+                "Simpan Sebagai Template Baru", JOptionPane.QUESTION_MESSAGE);
+        
+        if (namaBaru == null || namaBaru.trim().isEmpty()) return;
+
+        try {
+            config.buatProfilBaruDariAktif(namaBaru.trim());
+            muatComboProfil();
+            cmbProfil.setSelectedItem(namaBaru.trim());
+            JOptionPane.showMessageDialog(this, "Template '" + namaBaru.trim() + "' berhasil dibuat!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void aksiHapusTemplateTerpilih() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Hapus Template Pengaturan");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Terbatas", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String terpilih = (String) cmbProfil.getSelectedItem();
+        if (terpilih == null) return;
+
+        int konf = JOptionPane.showConfirmDialog(this, 
+                "Yakin ingin menghapus template settingan '" + terpilih + "'?", 
+                "Konfirmasi Hapus Template", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        
+        if (konf != JOptionPane.YES_OPTION) return;
+
+        try {
+            if (config.hapusProfil(terpilih)) {
+                muatComboProfil();
+                String aktifBaru = (String) cmbProfil.getSelectedItem();
+                if (aktifBaru != null) {
+                    aksiSwitchProfil(aktifBaru);
+                }
+                JOptionPane.showMessageDialog(this, "Template '" + terpilih + "' berhasil dihapus!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Ditolak", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     private void terapkanPreset(Color header, Color accent) {
@@ -211,7 +365,7 @@ public class DialogPengaturan extends JDialog {
 
     private void muatDataTabelDiskon() {
         modelDiskon.setRowCount(0);
-        for (Map.Entry<String, Double> entry : config.getDaftarDiskonMember().entrySet()) {
+        for (Map.Entry<String, Double> entry : localDiskonMap.entrySet()) {
             modelDiskon.addRow(new Object[]{
                 entry.getKey(),
                 String.format("%.1f%%", entry.getValue() * 100),
@@ -228,27 +382,31 @@ public class DialogPengaturan extends JDialog {
             return;
         }
 
-        JTextField txtNama = new JTextField();
-        JTextField txtPersen = new JTextField();
+        JTextField txtTipe = new JTextField();
+        JTextField txtDiskon = new JTextField();
         JPanel pnl = new JPanel(new GridLayout(2, 2, 8, 8));
-        pnl.add(new JLabel("Nama Tipe Member (misal PLATINUM):"));
-        pnl.add(txtNama);
-        pnl.add(new JLabel("Persentase Diskon (0 s/d 100 %):"));
-        pnl.add(txtPersen);
+        pnl.add(new JLabel("Nama Tipe Member (Unik):"));
+        pnl.add(txtTipe);
+        pnl.add(new JLabel("Persentase Diskon (0 s/d 100):"));
+        pnl.add(txtDiskon);
 
-        int opt = JOptionPane.showConfirmDialog(this, pnl, "Tambah Skema Diskon Baru", JOptionPane.OK_CANCEL_OPTION);
+        int opt = JOptionPane.showConfirmDialog(this, pnl, "Tambah Skema Diskon Member", JOptionPane.OK_CANCEL_OPTION);
         if (opt == JOptionPane.OK_OPTION) {
+            String tipe = txtTipe.getText().trim().toUpperCase();
+            String strD = txtDiskon.getText().trim();
+            if (tipe.isEmpty() || strD.isEmpty()) return;
+
             try {
-                String nama = txtNama.getText().trim().toUpperCase();
-                double p = Double.parseDouble(txtPersen.getText().trim());
-                if (p < 0 || p > 100) {
-                    JOptionPane.showMessageDialog(this, "Persentase harus di antara 0 dan 100%!", "Error", JOptionPane.ERROR_MESSAGE);
+                double pct = Double.parseDouble(strD.replace("%", "").trim());
+                if (pct < 0 || pct > 100) {
+                    JOptionPane.showMessageDialog(this, "Persentase diskon harus 0 s/d 100%!", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                config.simpanDiskonMember(nama, p / 100.0);
+                double desimal = pct / 100.0;
+                localDiskonMap.put(tipe, desimal);
                 muatDataTabelDiskon();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Input tidak valid: " + ex.getMessage(), "Error Format", JOptionPane.ERROR_MESSAGE);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Format angka diskon tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -263,29 +421,30 @@ public class DialogPengaturan extends JDialog {
 
         int row = tabelDiskon.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Pilih salah satu baris diskon yang ingin diedit!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Pilih baris tipe member yang ingin diedit nilainya!", "Peringatan", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         String tipe = (String) modelDiskon.getValueAt(row, 0);
-        double diskonLama = config.getDiskon(tipe);
+        double diskonLama = localDiskonMap.getOrDefault(tipe, 0.0);
 
         String input = JOptionPane.showInputDialog(this, 
-            "Masukkan persentase diskon baru untuk '" + tipe + "' (0 s/d 100 %):", 
+            "Masukkan nilai diskon baru untuk member '" + tipe + "' (dalam %):\n(0 s/d 100)", 
             String.format("%.0f", diskonLama * 100));
 
-        if (input != null && !input.trim().isEmpty()) {
-            try {
-                double val = Double.parseDouble(input.trim());
-                if (val < 0 || val > 100) {
-                    JOptionPane.showMessageDialog(this, "Persentase diskon harus 0 s/d 100%!", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                config.simpanDiskonMember(tipe, val / 100.0);
-                muatDataTabelDiskon();
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Nilai persentase harus berupa angka numerik!", "Error", JOptionPane.ERROR_MESSAGE);
+        if (input == null || input.trim().isEmpty()) return;
+
+        try {
+            double pct = Double.parseDouble(input.replace("%", "").trim());
+            if (pct < 0 || pct > 100) {
+                JOptionPane.showMessageDialog(this, "Persentase diskon harus 0 s/d 100%!", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
+            double desimal = pct / 100.0;
+            localDiskonMap.put(tipe, desimal);
+            muatDataTabelDiskon();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Format angka diskon tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -299,7 +458,7 @@ public class DialogPengaturan extends JDialog {
 
         int row = tabelDiskon.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Pilih salah satu baris diskon yang ingin dihapus!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Pilih baris tipe member yang ingin dihapus!", "Peringatan", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -314,7 +473,7 @@ public class DialogPengaturan extends JDialog {
             "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
 
         if (konf == JOptionPane.YES_OPTION) {
-            config.hapusDiskonMember(tipe);
+            localDiskonMap.remove(tipe);
             muatDataTabelDiskon();
         }
     }
@@ -327,16 +486,24 @@ public class DialogPengaturan extends JDialog {
             return;
         }
 
-        try {
-            config.setJudulAplikasi(txtTitle.getText());
-            config.setTeksHeaderSub(txtSubtitle.getText());
-            config.setWarnaHeader(selectedHeaderColor);
-            config.setWarnaAksen(selectedAccentColor);
+        String profileName = (String) cmbProfil.getSelectedItem();
+        if (profileName == null || profileName.trim().isEmpty()) {
+            profileName = "Settingan 1";
+        }
 
+        try {
+            String title = txtTitle.getText().trim();
+            String sub = txtSubtitle.getText().trim();
+
+            ProfilPengaturan target = new ProfilPengaturan(profileName, title, sub,
+                    selectedHeaderColor, selectedAccentColor, localDiskonMap);
+
+            config.simpanProfil(target);
+            config.aktifkanProfil(profileName);
             config.simpanKeFile();
 
             JOptionPane.showMessageDialog(this, 
-                "Pengaturan tampilan, judul/subtitle, dan skema diskon berhasil disimpan!", 
+                "Pengaturan template '" + profileName + "' berhasil disimpan dan diterapkan!", 
                 "Pengaturan Tersimpan", JOptionPane.INFORMATION_MESSAGE);
 
             parentFrame.terapkanPengaturan();
