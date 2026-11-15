@@ -5,10 +5,11 @@ package model;
  * Merepresentasikan data konsumen kasir yang berelasi Asosiasi (Association)
  * dengan class Transaksi (uses-a).
  * 
- * Sesuai Modul 10:
+ * Sesuai Modul 10 & Fase 4:
  * - Menegakkan validasi ketat dan throwing IllegalArgumentException saat format data salah.
- * - Menghilangkan silent fallback agar pemanggil sadar atas data masukan yang keliru.
  * - Menjaga enkapsulasi dan prinsip Information Expert dalam menghitung diskon member.
+ * - Mendukung skema diskon dinamis yang dapat dikonfigurasi lewat PengaturanSistem
+ *   serta tetap backward compatible dengan default VIP (15%), GOLD (10%), REGULER (0%).
  * 
  * Mahasiswa: Rafael Rizky Luga Tanjung (NRP: 3125522007) - PENS PSDKU Sumenep (2026)
  */
@@ -16,7 +17,8 @@ public class Pelanggan {
     private String idPelanggan;
     private String nama;
     private String nomorHP;
-    private String tipeMember; // Nilai valid: VIP, GOLD, REGULER
+    private String tipeMember;
+    private PengaturanSistem pengaturanSistem; // Opsional referensi konfigurasi dinamis
 
     /**
      * Constructor Pelanggan dengan penegakan validasi ketat.
@@ -24,10 +26,14 @@ public class Pelanggan {
      * @param idPelanggan kode identitas unik pelanggan (tidak boleh null/kosong)
      * @param nama        nama lengkap pelanggan (tidak boleh null/kosong)
      * @param nomorHP     nomor handphone/kontak aktif (10-15 digit angka)
-     * @param tipeMember  kategori membership (VIP / GOLD / REGULER)
+     * @param tipeMember  kategori membership (VIP / GOLD / REGULER / kustom)
      * @throws IllegalArgumentException jika parameter melanggar format valid
      */
     public Pelanggan(String idPelanggan, String nama, String nomorHP, String tipeMember) {
+        this(idPelanggan, nama, nomorHP, tipeMember, null);
+    }
+
+    public Pelanggan(String idPelanggan, String nama, String nomorHP, String tipeMember, PengaturanSistem pengaturan) {
         if (idPelanggan == null || idPelanggan.trim().isEmpty()) {
             throw new IllegalArgumentException("[ERROR VALIDASI] ID Pelanggan tidak boleh kosong atau null!");
         }
@@ -44,9 +50,11 @@ public class Pelanggan {
         }
         this.nomorHP = nomorHP.trim();
 
+        this.pengaturanSistem = pengaturan;
+
         // Validasi tipe member
         if (tipeMember == null || !validasiTipeMember(tipeMember)) {
-            throw new IllegalArgumentException("[ERROR VALIDASI] Tipe member tidak valid! Pilihan: VIP, GOLD, REGULER. (Diberikan: " + tipeMember + ")");
+            throw new IllegalArgumentException("[ERROR VALIDASI] Tipe member tidak valid! (Diberikan: " + tipeMember + ")");
         }
         this.tipeMember = tipeMember.trim().toUpperCase();
     }
@@ -69,15 +77,27 @@ public class Pelanggan {
         return tipeMember;
     }
 
+    public PengaturanSistem getPengaturanSistem() {
+        return pengaturanSistem;
+    }
+
+    public void setPengaturanSistem(PengaturanSistem pengaturanSistem) {
+        this.pengaturanSistem = pengaturanSistem;
+    }
+
     /**
      * Mendapatkan rasio diskon berdasarkan tipe membership.
-     * VIP = 15% (0.15), GOLD = 10% (0.10), REGULER = 0% (0.0).
+     * Jika terhubung dengan PengaturanSistem, membaca dari skema dinamis hasil konfigurasi.
+     * Jika tidak, fallback ke standar bawaan: VIP = 15%, GOLD = 10%, REGULER = 0%.
      * 
-     * @return persentase diskon dalam bentuk desimal
+     * @return persentase diskon dalam bentuk desimal (0.0 s/d 1.0)
      */
     public double getDiskon() {
         if (tipeMember == null) {
             return 0.0;
+        }
+        if (pengaturanSistem != null) {
+            return pengaturanSistem.getDiskon(tipeMember);
         }
         switch (tipeMember.toUpperCase()) {
             case "VIP":
@@ -92,12 +112,6 @@ public class Pelanggan {
 
     // --- MUTATOR METHODS DENGAN EXCEPTION VALIDATION ---
 
-    /**
-     * Mengubah nama pelanggan.
-     * 
-     * @param namaBaru nama baru pelanggan
-     * @throws IllegalArgumentException jika nama baru kosong
-     */
     public void ubahNama(String namaBaru) {
         if (namaBaru == null || namaBaru.trim().isEmpty()) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Nama baru pelanggan tidak boleh kosong atau null!");
@@ -105,12 +119,6 @@ public class Pelanggan {
         this.nama = namaBaru.trim();
     }
 
-    /**
-     * Mengubah nomor HP dengan validasi regex format internasional/nasional.
-     * 
-     * @param nomorHPBaru nomor kontak baru (10-15 digit)
-     * @throws IllegalArgumentException jika format tidak valid
-     */
     public void ubahNomorHP(String nomorHPBaru) {
         if (nomorHPBaru == null || !nomorHPBaru.trim().matches("^[0-9+]{10,15}$")) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Format nomor HP tidak valid (harus 10-15 digit)! (Ditolak: " + nomorHPBaru + ")");
@@ -118,33 +126,24 @@ public class Pelanggan {
         this.nomorHP = nomorHPBaru.trim();
     }
 
-    /**
-     * Mengubah status tipe membership pelanggan (VIP, GOLD, REGULER).
-     * 
-     * @param tipeMemberBaru tipe member baru
-     * @throws IllegalArgumentException jika tipe member di luar kualifikasi
-     */
     public void ubahTipeMember(String tipeMemberBaru) {
         if (tipeMemberBaru == null || !validasiTipeMember(tipeMemberBaru)) {
-            throw new IllegalArgumentException("[ERROR VALIDASI] Tipe member tidak valid! Pilihan: VIP, GOLD, REGULER. (Ditolak: " + tipeMemberBaru + ")");
+            throw new IllegalArgumentException("[ERROR VALIDASI] Tipe member tidak valid! (Ditolak: " + tipeMemberBaru + ")");
         }
         this.tipeMember = tipeMemberBaru.trim().toUpperCase();
     }
 
     private boolean validasiTipeMember(String tipe) {
+        if (tipe == null || tipe.trim().isEmpty()) return false;
         String upper = tipe.trim().toUpperCase();
+        if (pengaturanSistem != null && pengaturanSistem.adaTipeMember(upper)) {
+            return true;
+        }
         return upper.equals("VIP") || upper.equals("GOLD") || upper.equals("REGULER");
     }
 
     // --- RESPONSIBILITY METHODS ---
 
-    /**
-     * Menghitung nilai nominal potongan belanja yang berhak diterima pelanggan.
-     * Menerapkan prinsip Information Expert.
-     * 
-     * @param totalBelanja nilai total belanja kotor sebelum diskon member
-     * @return besaran nominal potongan diskon member
-     */
     public double hitungPotonganMember(double totalBelanja) {
         if (totalBelanja <= 0) {
             return 0.0;
@@ -152,9 +151,6 @@ public class Pelanggan {
         return totalBelanja * getDiskon();
     }
 
-    /**
-     * Menampilkan profil data pelanggan dan hak persentase diskonnya.
-     */
     public void tampilkanData() {
         System.out.println("ID Pelanggan : " + idPelanggan);
         System.out.println("Nama         : " + nama);

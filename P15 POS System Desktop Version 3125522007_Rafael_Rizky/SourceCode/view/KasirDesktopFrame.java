@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * KasirDesktopFrame - Modern Swing Graphical User Interface (GUI)
- * Sistem Kasir Sederhana (Point of Sale) Versi Desktop (Fase 1: Multi-role, Item Log, Laporan & VOID)
+ * Sistem Kasir Sederhana (Point of Sale) Versi Desktop (Fase 4: Responsif, Desain Modern, Settings CRUD Diskon & Tampilan)
  * 
  * Mahasiswa : Rafael Rizky Luga Tanjung (NRP: 3125522007)
  * Dosen     : Nirwana Haidar Hari, S.Pd., M.Kom.
@@ -34,6 +34,7 @@ public class KasirDesktopFrame extends JFrame {
     private final transient TransaksiFileRepository transaksiRepo;
     private final transient TransaksiItemRepository transaksiItemRepo;
     private final transient AuthService authService;
+    private final transient PengaturanSistem pengaturanSistem;
 
     // Sesi Pengguna Aktif
     private transient User currentUser;
@@ -63,9 +64,18 @@ public class KasirDesktopFrame extends JFrame {
     private JLabel lblKembalian;
     private JLabel lblUserBadge;
 
+    // Header Components (Dapat Diperbarui Dinamis dari Settings)
+    private JPanel headerPanel;
+    private JLabel lblTitle;
+    private JLabel lblSub;
+    private ModernButton btnBayar;
+
     @SuppressWarnings("this-escape")
     public KasirDesktopFrame() {
         super("Sistem Kasir Sederhana (POS Desktop) - Rafael Rizky (3125522007)");
+        this.pengaturanSistem = new PengaturanSistem();
+        this.pengaturanSistem.muatDariFile();
+
         this.katalog = new KatalogProduk();
         this.produkRepo = new ProdukFileRepository();
         this.transaksiRepo = new TransaksiFileRepository();
@@ -142,22 +152,26 @@ public class KasirDesktopFrame extends JFrame {
         if (lblUserBadge != null) {
             lblUserBadge.setText(currentUser.getUsername() + " [" + currentUser.getRole() + "]");
         }
-        setTitle("Sistem Kasir POS - " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
+        setTitle(pengaturanSistem.getJudulAplikasi() + " - " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
     }
 
     private void mulaiTransaksiBaru() {
         String nama = (txtNamaPelanggan != null && !txtNamaPelanggan.getText().trim().isEmpty()) 
                       ? txtNamaPelanggan.getText().trim() : "Pelanggan Umum";
-        String rawMember = (cmbTipeMember != null) ? (String) cmbTipeMember.getSelectedItem() : "REGULER";
         String member = "REGULER";
-        if (rawMember != null) {
-            if (rawMember.contains("VIP")) member = "VIP";
-            else if (rawMember.contains("GOLD")) member = "GOLD";
+        if (cmbTipeMember != null && cmbTipeMember.getSelectedItem() != null) {
+            String rawMember = (String) cmbTipeMember.getSelectedItem();
+            int idxKurung = rawMember.indexOf(" (");
+            if (idxKurung > 0) {
+                member = rawMember.substring(0, idxKurung).trim();
+            } else {
+                member = rawMember.trim();
+            }
         }
 
         String autoId = "TRX-" + System.currentTimeMillis();
         String tgl = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
-        Pelanggan p = new Pelanggan("CUST-" + (System.currentTimeMillis() % 1000), nama, "081234567890", member);
+        Pelanggan p = new Pelanggan("CUST-" + (System.currentTimeMillis() % 1000), nama, "081234567890", member, pengaturanSistem);
 
         this.transaksiAktif = new Transaksi(autoId, tgl, p);
 
@@ -198,55 +212,58 @@ public class KasirDesktopFrame extends JFrame {
             }
         });
         setSize(1240, 740);
+        setMinimumSize(new Dimension(860, 580)); // Mencegah window terlalu mengecil
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
 
-        // 1. HEADER PANEL DENGAN ROLE INDICATOR & MENU ADMIN
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(new Color(27, 54, 93));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        // 1. HEADER PANEL DENGAN ROLE INDICATOR, MENU ADMIN & PENGATURAN
+        headerPanel = new JPanel(new BorderLayout(10, 5));
+        headerPanel.setBackground(pengaturanSistem.getWarnaHeader());
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
-        JPanel headerLeft = new JPanel(new GridLayout(2, 1));
+        JPanel headerLeft = new JPanel(new GridLayout(2, 1, 0, 2));
         headerLeft.setOpaque(false);
-        JLabel lblTitle = new JLabel("SISTEM KASIR POINT OF SALE (POS DESKTOP)");
+        lblTitle = new JLabel(pengaturanSistem.getJudulAplikasi());
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblTitle.setForeground(Color.WHITE);
 
-        JLabel lblSub = new JLabel("PBO 2026 | Rafael Rizky Luga Tanjung (NRP: 3125522007) | PENS PSDKU Sumenep");
+        lblSub = new JLabel(pengaturanSistem.getTeksHeaderSub());
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblSub.setForeground(new Color(200, 220, 255));
+        lblSub.setForeground(new Color(220, 235, 255));
         headerLeft.add(lblTitle);
         headerLeft.add(lblSub);
 
-        JPanel headerRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 2));
+        JPanel headerRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         headerRight.setOpaque(false);
 
         lblUserBadge = new JLabel(currentUser.getUsername() + " [" + currentUser.getRole() + "]");
         lblUserBadge.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblUserBadge.setForeground(new Color(255, 230, 100));
 
-        JButton btnLaporan = new JButton("📊 Laporan Harian");
+        ModernButton btnPengaturan = new ModernButton("⚙️ Pengaturan", new Color(142, 68, 173), Color.WHITE);
+        btnPengaturan.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnPengaturan.addActionListener(e -> aksiBukaDialogPengaturan());
+
+        ModernButton btnLaporan = new ModernButton("📊 Laporan Harian", new Color(41, 128, 185), Color.WHITE);
         btnLaporan.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        btnLaporan.setBackground(new Color(52, 152, 219));
-        btnLaporan.setForeground(Color.WHITE);
         btnLaporan.addActionListener(e -> aksiBukaLaporanHarian());
 
-        JButton btnRiwayatVoid = new JButton("📜 Riwayat / VOID");
+        ModernButton btnRiwayatVoid = new ModernButton("📜 Riwayat / VOID", new Color(211, 84, 0), Color.WHITE);
         btnRiwayatVoid.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        btnRiwayatVoid.setBackground(new Color(230, 126, 34));
-        btnRiwayatVoid.setForeground(Color.WHITE);
         btnRiwayatVoid.addActionListener(e -> aksiBukaRiwayatVoid());
 
-        JButton btnGantiAkun = new JButton("👤 Ganti Akun");
-        btnGantiAkun.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        ModernButton btnGantiAkun = new ModernButton("👤 Ganti Akun", new Color(52, 73, 94), Color.WHITE);
+        btnGantiAkun.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnGantiAkun.addActionListener(e -> {
             prosesLoginAwal();
             muatTabelKatalog();
         });
 
-        headerRight.add(new JLabel("Petugas: "));
-        headerRight.getComponent(0).setForeground(Color.WHITE);
+        JLabel lblPetugasText = new JLabel("Petugas: ");
+        lblPetugasText.setForeground(Color.WHITE);
+        headerRight.add(lblPetugasText);
         headerRight.add(lblUserBadge);
+        headerRight.add(btnPengaturan);
         headerRight.add(btnLaporan);
         headerRight.add(btnRiwayatVoid);
         headerRight.add(btnGantiAkun);
@@ -266,23 +283,69 @@ public class KasirDesktopFrame extends JFrame {
         footerPanel.setBackground(new Color(240, 243, 246));
         footerPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(200, 205, 210)));
 
-        JLabel lblStatus = new JLabel("Status Sistem: Multi-role aktif (Admin/Kasir) | Terhubung ke data/produk.txt & data/transaksi_item.txt.");
+        JLabel lblStatus = new JLabel("Status Sistem: Desain Modern & Responsif | Multi-role aktif (Admin/Kasir) | Terhubung ke data/settings.txt.");
         lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblStatus.setForeground(new Color(80, 90, 100));
         footerPanel.add(lblStatus);
         add(footerPanel, BorderLayout.SOUTH);
     }
 
+    /**
+     * Menerapkan pembaruan pengaturan tampilan & diskon secara real-time ke seluruh antarmuka GUI.
+     */
+    public void terapkanPengaturan() {
+        lblTitle.setText(pengaturanSistem.getJudulAplikasi());
+        lblSub.setText(pengaturanSistem.getTeksHeaderSub());
+        headerPanel.setBackground(pengaturanSistem.getWarnaHeader());
+        setTitle(pengaturanSistem.getJudulAplikasi() + " - " + currentUser.getUsername() + " (" + currentUser.getRole() + ")");
+        
+        // Perbarui pilihan membership di ComboBox
+        updateComboBoxMember();
+        if (transaksiAktif != null) {
+            transaksiAktif.getPelanggan().setPengaturanSistem(pengaturanSistem);
+            updateKalkulasiFinansial();
+        }
+        repaint();
+    }
+
+    private void updateComboBoxMember() {
+        if (cmbTipeMember == null) return;
+        String terpilihSekarang = (String) cmbTipeMember.getSelectedItem();
+        cmbTipeMember.removeAllItems();
+        for (java.util.Map.Entry<String, Double> entry : pengaturanSistem.getDaftarDiskonMember().entrySet()) {
+            cmbTipeMember.addItem(String.format("%s (Diskon %.0f%%)", entry.getKey(), entry.getValue() * 100));
+        }
+        if (terpilihSekarang != null) {
+            for (int i = 0; i < cmbTipeMember.getItemCount(); i++) {
+                if (cmbTipeMember.getItemAt(i).startsWith(terpilihSekarang.split(" ")[0])) {
+                    cmbTipeMember.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void aksiBukaDialogPengaturan() {
+        DialogPengaturan dlg = new DialogPengaturan(this, pengaturanSistem, currentUser);
+        dlg.setVisible(true);
+    }
+
     private JPanel buatPanelKatalog() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 5));
 
-        JPanel topPanel = new JPanel(new BorderLayout(5, 5));
+        // Top Header Katalog: Menggunakan GridBagLayout / BoxLayout Responsif 2-Baris agar TIDAK TERTAMPAI
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+
+        JPanel row1 = new JPanel(new BorderLayout(5, 5));
         JLabel lblSection = new JLabel("KATALOG INVENTARIS PRODUK");
         lblSection.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblSection.setForeground(new Color(40, 60, 80));
+        lblSection.setForeground(new Color(30, 50, 70));
+        row1.add(lblSection, BorderLayout.WEST);
 
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        // Barcode Wedge & Search Row (Wrap & Responsif)
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         searchPanel.add(new JLabel("Scan Barcode:"));
         txtBarcodeScan = new JTextField(9);
         txtBarcodeScan.setToolTipText("Arahkan scanner barcode atau ketik kode lalu tekan Enter");
@@ -290,9 +353,9 @@ public class KasirDesktopFrame extends JFrame {
         searchPanel.add(txtBarcodeScan);
 
         searchPanel.add(new JLabel("Cari:"));
-        txtCari = new JTextField(10);
-        JButton btnCari = new JButton("Cari");
-        JButton btnReset = new JButton("Reset");
+        txtCari = new JTextField(9);
+        ModernButton btnCari = new ModernButton("Cari", new Color(41, 128, 185), Color.WHITE);
+        ModernButton btnReset = new ModernButton("Reset", new Color(108, 117, 125), Color.WHITE);
 
         btnCari.addActionListener(e -> filterKatalog(txtCari.getText()));
         btnReset.addActionListener(e -> { txtCari.setText(""); muatTabelKatalog(); });
@@ -301,9 +364,10 @@ public class KasirDesktopFrame extends JFrame {
         searchPanel.add(txtCari);
         searchPanel.add(btnCari);
         searchPanel.add(btnReset);
+        row1.add(searchPanel, BorderLayout.EAST);
 
-        topPanel.add(lblSection, BorderLayout.WEST);
-        topPanel.add(searchPanel, BorderLayout.EAST);
+        topPanel.add(row1);
+        topPanel.add(Box.createVerticalStrut(4));
         panel.add(topPanel, BorderLayout.NORTH);
 
         String[] cols = {"Kode", "Nama Produk", "Kategori", "Harga (Rp)", "Stok", "Info Khusus"};
@@ -313,7 +377,7 @@ public class KasirDesktopFrame extends JFrame {
             public boolean isCellEditable(int row, int column) { return false; }
         };
         tabelKatalog = new JTable(modelKatalog);
-        tabelKatalog.setRowHeight(24);
+        tabelKatalog.setRowHeight(25);
         tabelKatalog.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tabelKatalog.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
         tabelKatalog.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -321,20 +385,13 @@ public class KasirDesktopFrame extends JFrame {
 
         panel.add(new JScrollPane(tabelKatalog), BorderLayout.CENTER);
 
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
-        JButton btnTambahKeranjang = new JButton("+ Tambah ke Keranjang");
-        btnTambahKeranjang.setBackground(new Color(40, 167, 69));
-        btnTambahKeranjang.setForeground(Color.WHITE);
-        btnTambahKeranjang.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-        JButton btnBaru = new JButton("+ Produk Baru");
-        JButton btnEdit = new JButton("Edit Produk");
-        btnEdit.setBackground(new Color(23, 162, 184));
-        btnEdit.setForeground(Color.WHITE);
-        btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-        JButton btnHapus = new JButton("Hapus Produk");
-        JButton btnSimpanKatalog = new JButton("Simpan ke File");
+        // Button Toolbar Bawah Katalog: FlowLayout responsif yang muat rapi di segala resolusi
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        ModernButton btnTambahKeranjang = new ModernButton("+ Keranjang", new Color(39, 174, 96), Color.WHITE);
+        ModernButton btnBaru = new ModernButton("+ Produk Baru", new Color(41, 128, 185), Color.WHITE);
+        ModernButton btnEdit = new ModernButton("Edit Produk", new Color(22, 160, 133), Color.WHITE);
+        ModernButton btnHapus = new ModernButton("Hapus", new Color(192, 57, 43), Color.WHITE);
+        ModernButton btnSimpanKatalog = new ModernButton("💾 Simpan File", new Color(52, 73, 94), Color.WHITE);
 
         btnTambahKeranjang.addActionListener(e -> aksiTambahKeKeranjang());
         btnBaru.addActionListener(e -> aksiBukaDialogProdukBaru());
@@ -364,7 +421,8 @@ public class KasirDesktopFrame extends JFrame {
         customerPanel.add(txtNamaPelanggan);
 
         customerPanel.add(new JLabel("Tipe Membership:"));
-        cmbTipeMember = new JComboBox<>(new String[]{"REGULER (Diskon 0%)", "GOLD (Diskon 10%)", "VIP (Diskon 15%)"});
+        cmbTipeMember = new JComboBox<>();
+        updateComboBoxMember();
         cmbTipeMember.addActionListener(e -> updateMemberDariCombo());
         customerPanel.add(cmbTipeMember);
 
@@ -377,7 +435,7 @@ public class KasirDesktopFrame extends JFrame {
             public boolean isCellEditable(int row, int column) { return false; }
         };
         tabelKeranjang = new JTable(modelKeranjang);
-        tabelKeranjang.setRowHeight(24);
+        tabelKeranjang.setRowHeight(25);
         tabelKeranjang.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tabelKeranjang.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
 
@@ -385,9 +443,9 @@ public class KasirDesktopFrame extends JFrame {
 
         JPanel bottomContainer = new JPanel(new BorderLayout(5, 5));
 
-        JPanel cartActions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton btnHapusItem = new JButton("Batalkan Item Terpilih");
-        JButton btnResetTrx = new JButton("Reset Transaksi");
+        JPanel cartActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        ModernButton btnHapusItem = new ModernButton("Batalkan Item Terpilih", new Color(192, 57, 43), Color.WHITE);
+        ModernButton btnResetTrx = new ModernButton("Reset Transaksi", new Color(108, 117, 125), Color.WHITE);
 
         btnHapusItem.addActionListener(e -> aksiBatalkanItemKeranjang());
         btnResetTrx.addActionListener(e -> {
@@ -403,7 +461,7 @@ public class KasirDesktopFrame extends JFrame {
         cartActions.add(btnResetTrx);
         bottomContainer.add(cartActions, BorderLayout.NORTH);
 
-        JPanel paymentPanel = new JPanel(new GridLayout(7, 2, 8, 5));
+        JPanel paymentPanel = new JPanel(new GridLayout(7, 2, 8, 4));
         paymentPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createTitledBorder("Rincian Pembayaran Kasir (Pola Strategy)"),
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)
@@ -454,9 +512,7 @@ public class KasirDesktopFrame extends JFrame {
 
         bottomContainer.add(paymentPanel, BorderLayout.CENTER);
 
-        JButton btnBayar = new JButton("BAYAR & PROSES CHECKOUT");
-        btnBayar.setBackground(new Color(40, 167, 69));
-        btnBayar.setForeground(Color.WHITE);
+        btnBayar = new ModernButton("BAYAR & PROSES CHECKOUT", new Color(39, 174, 96), Color.WHITE);
         btnBayar.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btnBayar.setPreferredSize(new Dimension(0, 42));
         btnBayar.addActionListener(e -> aksiProsesPembayaran());
@@ -640,8 +696,12 @@ public class KasirDesktopFrame extends JFrame {
         String sel = (String) cmbTipeMember.getSelectedItem();
         String member = "REGULER";
         if (sel != null) {
-            if (sel.contains("VIP")) member = "VIP";
-            else if (sel.contains("GOLD")) member = "GOLD";
+            int idxKurung = sel.indexOf(" (");
+            if (idxKurung > 0) {
+                member = sel.substring(0, idxKurung).trim();
+            } else {
+                member = sel.trim();
+            }
         }
         transaksiAktif.getPelanggan().ubahTipeMember(member);
         updateKalkulasiFinansial();
@@ -672,14 +732,14 @@ public class KasirDesktopFrame extends JFrame {
                 double kembalian = bayar - tagihan;
                 if (kembalian >= 0) {
                     lblKembalian.setText(String.format("Rp %,.0f", kembalian));
-                    lblKembalian.setForeground(new Color(40, 167, 69));
+                    lblKembalian.setForeground(new Color(39, 174, 96));
                 } else {
                     lblKembalian.setText(String.format("Kurang: Rp %,.0f", Math.abs(kembalian)));
                     lblKembalian.setForeground(new Color(220, 53, 69));
                 }
             } else if (modeIdx == 1) { // QRIS
                 lblKembalian.setText("Rp 0 (Pas via QRIS)");
-                lblKembalian.setForeground(new Color(40, 167, 69));
+                lblKembalian.setForeground(new Color(39, 174, 96));
             } else if (modeIdx == 2) { // SPLIT
                 String strTunai = (txtBayarTunai != null) ? txtBayarTunai.getText().trim() : "0";
                 String strQris = (txtNominalQris != null) ? txtNominalQris.getText().trim() : "0";
@@ -690,7 +750,7 @@ public class KasirDesktopFrame extends JFrame {
                 if (selisih >= 0) {
                     double kembalianTunai = Math.max(0, tunai - Math.max(0, tagihan - qris));
                     lblKembalian.setText(String.format("Kembali Tunai: Rp %,.0f", kembalianTunai));
-                    lblKembalian.setForeground(new Color(40, 167, 69));
+                    lblKembalian.setForeground(new Color(39, 174, 96));
                 } else {
                     lblKembalian.setText(String.format("Kombinasi Kurang: Rp %,.0f", Math.abs(selisih)));
                     lblKembalian.setForeground(new Color(220, 53, 69));
@@ -790,9 +850,9 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(new JScrollPane(ta), BorderLayout.CENTER);
 
         JPanel pnlAksiStruk = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
-        JButton btnCetakKertas = new JButton("🖨️ Cetak ke Printer");
-        JButton btnEksporFile = new JButton("💾 Simpan Berkas Teks");
-        JButton btnTutup = new JButton("Selesai / Tutup");
+        ModernButton btnCetakKertas = new ModernButton("🖨️ Cetak ke Printer", new Color(41, 128, 185), Color.WHITE);
+        ModernButton btnEksporFile = new ModernButton("💾 Simpan Berkas Teks", new Color(39, 174, 96), Color.WHITE);
+        ModernButton btnTutup = new ModernButton("Selesai / Tutup", new Color(108, 117, 125), Color.WHITE);
 
         btnCetakKertas.addActionListener(e -> {
             try {
@@ -849,7 +909,7 @@ public class KasirDesktopFrame extends JFrame {
         }
 
         JDialog dlg = new JDialog(this, "Edit Data Produk - " + p.getKode(), true);
-        dlg.setSize(420, 340);
+        dlg.setSize(420, 350);
         dlg.setLocationRelativeTo(this);
         dlg.setLayout(new GridLayout(6, 2, 8, 8));
         dlg.getRootPane().setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -875,7 +935,7 @@ public class KasirDesktopFrame extends JFrame {
         JTextField txtExtra;
 
         if (p instanceof ProdukMakanan) {
-            lblExtra = new JLabel("Tgl Kadaluarsa (DD-MM-YYYY):");
+            lblExtra = new JLabel("Tgl Kadaluarsa (yyyy-MM-dd):");
             txtExtra = new JTextField(((ProdukMakanan) p).getTanggalKadaluarsa());
         } else {
             lblExtra = new JLabel("Garansi Resmi (Bulan):");
@@ -893,45 +953,26 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
-        JButton btnBatal = new JButton("Batal");
+        ModernButton btnBatal = new ModernButton("Batal", new Color(108, 117, 125), Color.WHITE);
         btnBatal.addActionListener(e -> dlg.dispose());
         dlg.add(btnBatal);
 
-        JButton btnSimpan = new JButton("Simpan Perubahan");
-        btnSimpan.setBackground(new Color(40, 167, 69));
-        btnSimpan.setForeground(Color.WHITE);
-        btnSimpan.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
+        ModernButton btnSimpan = new ModernButton("Simpan Perubahan", new Color(39, 174, 96), Color.WHITE);
         btnSimpan.addActionListener(e -> {
             try {
-                String namaBaru = txtNama.getText().trim();
                 int hargaBaru = Integer.parseInt(txtHarga.getText().trim());
                 int stokBaru = Integer.parseInt(txtStok.getText().trim());
+                String namaBaru = txtNama.getText().trim();
                 String extraBaru = txtExtra.getText().trim();
 
-                if (sedangDiKeranjang && stokBaru != p.getStok()) {
-                    JOptionPane.showMessageDialog(dlg, 
-                        "Stok produk '" + p.getKode() + "' tidak dapat diubah karena sedang aktif di keranjang belanja!\n" +
-                        "Batalkan transaksi atau selesaikan checkout terlebih dahulu.", 
-                        "Integritas Data Terkunci", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
+                katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru);
+                simpanKatalogAmanKeFile(PATH_PRODUK);
 
-                boolean ok = katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru);
-                if (ok) {
-                    simpanKatalogAmanKeFile(PATH_PRODUK);
-                    muatTabelKatalog();
-                    dlg.dispose();
-                    JOptionPane.showMessageDialog(this, "Data produk '" + p.getKode() + "' berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    JOptionPane.showMessageDialog(dlg, "Gagal mengedit produk. Kode tidak ditemukan.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(dlg, "Harga dan stok harus berupa angka bulat positif!", "Error Format Angka", JOptionPane.ERROR_MESSAGE);
-            } catch (IllegalArgumentException ex) {
-                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
+                muatTabelKatalog();
+                dlg.dispose();
+                JOptionPane.showMessageDialog(this, "Data produk '" + p.getKode() + "' berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(dlg, "Terjadi kesalahan: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -941,30 +982,30 @@ public class KasirDesktopFrame extends JFrame {
 
     private void aksiBukaDialogProdukBaru() {
         try {
-            AuthService.enforceAdmin(currentUser, "Menambah Produk Baru");
+            AuthService.enforceAdmin(currentUser, "Tambah Produk Baru");
         } catch (AksesDitolakException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Terbatas", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        JDialog dlg = new JDialog(this, "Registrasi Produk Baru ke Katalog", true);
+        JDialog dlg = new JDialog(this, "Registrasi Komoditas Produk Baru", true);
         dlg.setSize(440, 380);
         dlg.setLocationRelativeTo(this);
         dlg.setLayout(new GridLayout(7, 2, 8, 8));
         dlg.getRootPane().setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
+        JComboBox<String> cmbJenis = new JComboBox<>(new String[]{"Makanan & Minuman", "Elektronik & Gadget"});
         JTextField txtKode = new JTextField();
         JTextField txtNama = new JTextField();
         JTextField txtHarga = new JTextField();
         JTextField txtStok = new JTextField();
-        JComboBox<String> cmbJenis = new JComboBox<>(new String[]{"Makanan / Minuman", "Elektronik / Gadget"});
-        JLabel lblExtra = new JLabel("Tgl Kadaluarsa (DD-MM-YYYY):");
-        JTextField txtExtra = new JTextField("31-12-2026");
+        JLabel lblExtra = new JLabel("Tgl Kadaluarsa (yyyy-MM-dd):");
+        JTextField txtExtra = new JTextField("2026-12-31");
 
         cmbJenis.addActionListener(e -> {
             if (cmbJenis.getSelectedIndex() == 0) {
-                lblExtra.setText("Tgl Kadaluarsa (DD-MM-YYYY):");
-                txtExtra.setText("31-12-2026");
+                lblExtra.setText("Tgl Kadaluarsa (yyyy-MM-dd):");
+                txtExtra.setText("2026-12-31");
             } else {
                 lblExtra.setText("Garansi Resmi (Bulan):");
                 txtExtra.setText("12");
@@ -973,26 +1014,22 @@ public class KasirDesktopFrame extends JFrame {
 
         dlg.add(new JLabel("Kategori Produk:"));
         dlg.add(cmbJenis);
-        dlg.add(new JLabel("Kode Unik Produk:"));
+        dlg.add(new JLabel("Kode Produk (Unik):"));
         dlg.add(txtKode);
         dlg.add(new JLabel("Nama Produk:"));
         dlg.add(txtNama);
-        dlg.add(new JLabel("Harga Satuan (Rp):"));
+        dlg.add(new JLabel("Harga Jual (Rp):"));
         dlg.add(txtHarga);
-        dlg.add(new JLabel("Stok Awal:"));
+        dlg.add(new JLabel("Stok Awal Inventaris:"));
         dlg.add(txtStok);
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
-        JButton btnBatal = new JButton("Batal");
+        ModernButton btnBatal = new ModernButton("Batal", new Color(108, 117, 125), Color.WHITE);
         btnBatal.addActionListener(e -> dlg.dispose());
         dlg.add(btnBatal);
 
-        JButton btnSimpan = new JButton("Daftarkan Produk");
-        btnSimpan.setBackground(new Color(40, 167, 69));
-        btnSimpan.setForeground(Color.WHITE);
-        btnSimpan.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
+        ModernButton btnSimpan = new ModernButton("Daftarkan Produk", new Color(39, 174, 96), Color.WHITE);
         btnSimpan.addActionListener(e -> {
             try {
                 String kode = txtKode.getText().trim();
@@ -1087,7 +1124,7 @@ public class KasirDesktopFrame extends JFrame {
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         String tglDefault = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
         JTextField txtTgl = new JTextField(tglDefault, 10);
-        JButton btnFilter = new JButton("Tampilkan Laporan");
+        ModernButton btnFilter = new ModernButton("Tampilkan Laporan", new Color(41, 128, 185), Color.WHITE);
 
         topBar.add(new JLabel("Pilih Tanggal Transaksi (DD-MM-YYYY):"));
         topBar.add(txtTgl);
@@ -1099,50 +1136,52 @@ public class KasirDesktopFrame extends JFrame {
         txtRingkasan.setFont(new Font("Consolas", Font.PLAIN, 12));
         txtRingkasan.setEditable(false);
 
-        String[] colsTop = {"Kode Produk", "Nama Produk", "Total Terjual (Qty)", "Total Omzet (Rp)"};
-        DefaultTableModel modelTop = new DefaultTableModel(colsTop, 0) {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
+        DefaultTableModel modelTop = new DefaultTableModel(new String[]{"No", "Kode", "Nama Produk", "Total Terjual (Unit)"}, 0);
         JTable tblTop = new JTable(modelTop);
-
-        tabs.addTab("Ringkasan Finansial", new JScrollPane(txtRingkasan));
-        tabs.addTab("Top 5 Produk Terlaris", new JScrollPane(tblTop));
-        dlg.add(tabs, BorderLayout.CENTER);
 
         Runnable muatLaporan = () -> {
             try {
                 LaporanPenjualan lap = LaporanPenjualan.buatLaporan(PATH_TRANSAKSI, PATH_TRANSAKSI_ITEM, txtTgl.getText().trim());
                 StringBuilder sb = new StringBuilder();
-                sb.append("======================================================================\n");
-                sb.append("                  LAPORAN PENJUALAN HARIAN POS                       \n");
-                sb.append("======================================================================\n");
-                sb.append("Tanggal Laporan : ").append(lap.getFilterTanggal().isEmpty() ? "Semua Tanggal" : lap.getFilterTanggal()).append("\n");
-                sb.append("Dicetak Oleh    : ").append(currentUser.getUsername()).append(" (").append(currentUser.getRole()).append(")\n");
-                sb.append("----------------------------------------------------------------------\n");
-                sb.append(String.format("Jumlah Nota LUNAS Berhasil : %d transaksi\n", lap.getJumlahNotaLunas()));
-                sb.append(String.format("Jumlah Nota Dibatalkan(VOID): %d transaksi\n", lap.getJumlahNotaVoid()));
-                sb.append(String.format("TOTAL OMZET BERSIH         : Rp %,.0f\n", lap.getTotalOmzet()));
-                sb.append(String.format("Total Uang Tunai Diterima   : Rp %,.0f\n", lap.getTotalTunai()));
-                sb.append("======================================================================\n");
-
+                sb.append("===================================================================\n");
+                sb.append("                 RINGKASAN LAPORAN PENJUALAN HARIAN                \n");
+                sb.append("===================================================================\n");
+                sb.append("Tanggal Laporan        : ").append(lap.getFilterTanggal()).append("\n");
+                sb.append("Petugas Verifikasi     : ").append(currentUser.getUsername()).append(" (ADMIN)\n");
+                sb.append("-------------------------------------------------------------------\n");
+                sb.append("Jumlah Nota LUNAS      : ").append(lap.getJumlahNotaLunas()).append(" Transaksi\n");
+                sb.append(String.format("Total Omzet Penjualan  : Rp %,.0f\n", lap.getTotalOmzet()));
+                sb.append(String.format("Total Tunai Masuk      : Rp %,.0f\n", lap.getTotalTunai()));
+                sb.append("-------------------------------------------------------------------\n");
+                sb.append("Jumlah Nota VOID/Batal : ").append(lap.getJumlahNotaVoid()).append(" Transaksi (Dikecualikan dari Omzet)\n");
                 if (lap.isAdaTransaksiTanpaRincian()) {
-                    sb.append("\n[CATATAN AUDIT] Terdeteksi transaksi format lama tanpa rincian item.\nData omzet tetap sah dan dihitung penuh.\n");
+                    sb.append("Catatan Audit          : Terdapat transaksi lama tanpa rincian item (data legacy).\n");
                 }
-
+                sb.append("===================================================================\n");
                 txtRingkasan.setText(sb.toString());
 
                 modelTop.setRowCount(0);
+                int no = 1;
                 for (LaporanPenjualan.ItemTerlaris it : lap.getProdukTerlarisTop5()) {
-                    modelTop.addRow(new Object[]{it.getKodeProduk(), it.getNamaProduk(), it.getTotalQty() + " unit", String.format("Rp %,d", it.getTotalNominal())});
+                    modelTop.addRow(new Object[]{no++, it.getKodeProduk(), it.getNamaProduk(), it.getTotalQty()});
                 }
             } catch (Exception ex) {
-                txtRingkasan.setText("Gagal menghasilkan laporan: " + ex.getMessage());
+                JOptionPane.showMessageDialog(dlg, "Gagal membuat laporan: " + ex.getMessage(), "Error Laporan", JOptionPane.ERROR_MESSAGE);
             }
         };
 
         btnFilter.addActionListener(e -> muatLaporan.run());
         muatLaporan.run();
+
+        tabs.addTab("Ringkasan Finansial", new JScrollPane(txtRingkasan));
+        tabs.addTab("Top 5 Produk Terlaris", new JScrollPane(tblTop));
+        dlg.add(tabs, BorderLayout.CENTER);
+
+        JPanel pnlBawah = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        ModernButton btnTutup = new ModernButton("Tutup", new Color(108, 117, 125), Color.WHITE);
+        btnTutup.addActionListener(e -> dlg.dispose());
+        pnlBawah.add(btnTutup);
+        dlg.add(pnlBawah, BorderLayout.SOUTH);
 
         dlg.setVisible(true);
     }
@@ -1151,24 +1190,23 @@ public class KasirDesktopFrame extends JFrame {
         JDialog dlg = new JDialog(this, "Riwayat Transaksi & Pembatalan (VOID Nota)", true);
         dlg.setSize(850, 480);
         dlg.setLocationRelativeTo(this);
-        dlg.setLayout(new BorderLayout(8, 8));
+        dlg.setLayout(new BorderLayout(10, 10));
 
-        String[] cols = {"ID Transaksi", "Tanggal", "Pelanggan", "Member", "Total Bayar", "Status", "Kasir"};
-        DefaultTableModel modelTrx = new DefaultTableModel(cols, 0) {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
+        DefaultTableModel modelTrx = new DefaultTableModel(new String[]{
+            "ID Transaksi", "Waktu", "Pelanggan", "Member", "Total Bayar", "Status", "Kasir"
+        }, 0);
         JTable tblTrx = new JTable(modelTrx);
         tblTrx.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         Runnable refreshData = () -> {
-            modelTrx.setRowCount(0);
             try {
-                for (String[] t : transaksiRepo.muatSemuaTransaksi(PATH_TRANSAKSI)) {
-                    modelTrx.addRow(new Object[]{t[0], t[1], t[2], t[3], "Rp " + t[4], t[7], t[8]});
+                modelTrx.setRowCount(0);
+                List<String[]> list = transaksiRepo.muatSemuaTransaksi(PATH_TRANSAKSI);
+                for (String[] t : list) {
+                    modelTrx.addRow(new Object[]{t[0], t[1], t[2], t[3], String.format("Rp %,.0f", Double.parseDouble(t[4])), t[7], t[8]});
                 }
-            } catch (IOException e) {
-                JOptionPane.showMessageDialog(dlg, "Gagal memuat log transaksi: " + e.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dlg, "Gagal memuat transaksi: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         };
 
@@ -1176,27 +1214,26 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(new JScrollPane(tblTrx), BorderLayout.CENTER);
 
         JPanel pnlAksi = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        JButton btnRincian = new JButton("Lihat Rincian Item");
-        JButton btnVoid = new JButton("VOID Nota Terpilih (Admin Only)");
-        btnVoid.setBackground(new Color(220, 53, 69));
-        btnVoid.setForeground(Color.WHITE);
-        btnVoid.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        ModernButton btnRincian = new ModernButton("Lihat Rincian Item", new Color(41, 128, 185), Color.WHITE);
+        ModernButton btnVoid = new ModernButton("⚠️ VOID Nota Lunas", new Color(192, 57, 43), Color.WHITE);
 
         btnRincian.addActionListener(e -> {
             int row = tblTrx.getSelectedRow();
             if (row < 0) {
-                JOptionPane.showMessageDialog(dlg, "Pilih nota pada tabel terlebih dahulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, "Pilih salah satu baris transaksi terlebih dahulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             String idTrx = (String) modelTrx.getValueAt(row, 0);
             try {
                 List<String[]> items = transaksiItemRepo.muatItemByTransaksi(PATH_TRANSAKSI_ITEM, idTrx);
                 if (items.isEmpty()) {
-                    JOptionPane.showMessageDialog(dlg, "Rincian item tidak tersedia (Transaksi Format Lama / Legacy).", "Informasi Item", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(dlg, "Transaksi '" + idTrx + "' tidak memiliki log item tersimpan (mungkin data lama).", "Info", JOptionPane.INFORMATION_MESSAGE);
                 } else {
-                    StringBuilder sb = new StringBuilder("Rincian Belanja Nota " + idTrx + ":\n\n");
+                    StringBuilder sb = new StringBuilder("Rincian Item Belanja - " + idTrx + ":\n\n");
+                    int no = 1;
                     for (String[] it : items) {
-                        sb.append(String.format("- %s (%s) x %s unit = Rp %s\n", it[0], it[1], it[3], it[5]));
+                        sb.append(String.format("%d. %s - %s | Qty: %s x Rp %s | Subtotal: Rp %s\n",
+                                no++, it[0], it[1], it[3], it[2], it[5]));
                     }
                     JOptionPane.showMessageDialog(dlg, sb.toString(), "Rincian Item Nota", JOptionPane.INFORMATION_MESSAGE);
                 }
@@ -1220,7 +1257,6 @@ public class KasirDesktopFrame extends JFrame {
             }
 
             String idTrx = (String) modelTrx.getValueAt(row, 0);
-            String status = (String) modelTrx.getValueAt(row, 5);
 
             int konf = JOptionPane.showConfirmDialog(dlg,
                 "Anda akan membatalkan (VOID) nota '" + idTrx + "'.\n" +
