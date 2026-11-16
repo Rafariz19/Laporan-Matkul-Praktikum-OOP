@@ -3,6 +3,7 @@ package view;
 import model.*;
 import model.exception.*;
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 import java.awt.*;
@@ -499,6 +500,29 @@ public class KasirDesktopFrame extends JFrame {
         tabelKatalog.setSelectionBackground(pengaturanSistem.getWarnaAksen());
         tabelKatalog.setSelectionForeground(TemaWarna.getKontrasForeground(pengaturanSistem.getWarnaAksen()));
         tabelKatalog.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        tabelKatalog.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel c = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (value != null) {
+                    String str = value.toString();
+                    if (str.startsWith("<html>") && str.contains("<font color=")) {
+                        if (isSelected) {
+                            // Saat baris produk diklik/terpilih (muncul warna highlight tema kasir):
+                            // ubah warna persentase diskon (-10%) menjadi warna hitam pekat kontras tinggi
+                            c.setText(str.replaceAll("(?i)<font color=['\"][^'\"]*['\"]>", "<font color='#000000'>"));
+                        } else {
+                            // Saat baris tidak dipilih: tampilkan warna merah standar
+                            c.setText(str);
+                        }
+                    }
+                }
+                return c;
+            }
+        });
         
         renderBarKategori();
         muatTabelKatalog();
