@@ -90,10 +90,13 @@ public class TestPengaturanSistemDanDiskon {
             throw new AssertionError("Gagal mengaktifkan template Settingan 2!");
         }
 
-        // Modifikasi Settingan 2 dengan title beda dan diskon beda
+        // Modifikasi Settingan 2 dengan title beda, diskon beda, dan kategori beda
         config.setJudulAplikasi("SUPERMARKET CABANG MALANG");
         config.simpanDiskonMember("VIP", 0.40); // 40%
-        if (!"SUPERMARKET CABANG MALANG".equals(config.getJudulAplikasi()) || Math.abs(config.getDiskon("VIP") - 0.40) > 0.001) {
+        config.tambahKategori("Peralatan");
+        if (!"SUPERMARKET CABANG MALANG".equals(config.getJudulAplikasi()) 
+                || Math.abs(config.getDiskon("VIP") - 0.40) > 0.001
+                || !config.getDaftarKategori().contains("Peralatan")) {
             throw new AssertionError("Gagal modifikasi Settingan 2!");
         }
 
@@ -105,13 +108,18 @@ public class TestPengaturanSistemDanDiskon {
         if (Math.abs(config.getDiskon("VIP") - 0.15) > 0.001) {
             throw new AssertionError("Gagal memulihkan diskon VIP di Settingan 1!");
         }
+        if (config.getDaftarKategori().contains("Peralatan")) {
+            throw new AssertionError("Kategori 'Peralatan' seharusnya tidak ada di Settingan 1!");
+        }
 
         // Switch lagi ke "Settingan 2"
         config.aktifkanProfil("Settingan 2");
-        if (!"SUPERMARKET CABANG MALANG".equals(config.getJudulAplikasi()) || Math.abs(config.getDiskon("VIP") - 0.40) > 0.001) {
+        if (!"SUPERMARKET CABANG MALANG".equals(config.getJudulAplikasi()) 
+                || Math.abs(config.getDiskon("VIP") - 0.40) > 0.001
+                || !config.getDaftarKategori().contains("Peralatan")) {
             throw new AssertionError("Gagal switch kembali ke Settingan 2!");
         }
-        System.out.println("  5. Multi-Profile Template CRUD & Switching terverifikasi penuh.");
+        System.out.println("  5. Multi-Profile Template CRUD & Switching (Identitas, Diskon, & Kategori Terisolasi) terverifikasi.");
 
         // 6. Uji Persistensi Multi-Profile ke Disk dan Muat Ulang
         try {
@@ -128,11 +136,17 @@ public class TestPengaturanSistemDanDiskon {
             if (Math.abs(configMuat.getDiskon("VIP") - 0.40) > 0.001) {
                 throw new AssertionError("Gagal simpan/muat diskon VIP 40% Settingan 2!");
             }
+            if (!configMuat.getDaftarKategori().contains("Peralatan")) {
+                throw new AssertionError("Gagal simpan/muat kategori 'Peralatan' Settingan 2 dari file!");
+            }
 
-            // Buktikan Settingan 1 juga ada di file hasil muat
+            // Buktikan Settingan 1 juga ada di file hasil muat dan kategorinya independen
             ProfilPengaturan prof1 = configMuat.getProfil("Settingan 1");
             if (prof1 == null || !judulBaru.equals(prof1.getJudulAplikasi())) {
                 throw new AssertionError("Gagal memuat template Settingan 1 dari file!");
+            }
+            if (prof1.getDaftarKategori().contains("Peralatan")) {
+                throw new AssertionError("Settingan 1 seharusnya tidak memuat kategori 'Peralatan'!");
             }
             System.out.println("  6. Persistensi Multi-Profile data/settings.txt dan muat ulang berhasil 100%.");
         } catch (IOException e) {

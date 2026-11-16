@@ -1,7 +1,9 @@
 package model;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -11,6 +13,7 @@ import java.util.Map;
  * 2. Judul Aplikasi & Teks Subtitle Identitas.
  * 3. Skema Warna Header & Aksen.
  * 4. Skema Diskon Keanggotaan Member.
+ * 5. Pengaturan Kategori Produk Independen per Template.
  * 
  * Mata Kuliah : Praktikum Pemrograman Berorientasi Obyek (PBO)
  * Mahasiswa   : Rafael Rizky Luga Tanjung (NRP: 3125522007)
@@ -23,10 +26,17 @@ public class ProfilPengaturan {
     private Color warnaHeader;
     private Color warnaAksen;
     private final Map<String, Double> daftarDiskonMember;
+    private final List<String> daftarKategori;
+
+    public ProfilPengaturan(String namaProfil, String judulAplikasi, String teksHeaderSub,
+                            Color warnaHeader, Color warnaAksen, Map<String, Double> diskonMap) {
+        this(namaProfil, judulAplikasi, teksHeaderSub, warnaHeader, warnaAksen, diskonMap, null);
+    }
 
     @SuppressWarnings("this-escape")
     public ProfilPengaturan(String namaProfil, String judulAplikasi, String teksHeaderSub,
-                            Color warnaHeader, Color warnaAksen, Map<String, Double> diskonMap) {
+                            Color warnaHeader, Color warnaAksen, Map<String, Double> diskonMap,
+                            List<String> kategoriList) {
         setNamaProfil(namaProfil);
         setJudulAplikasi(judulAplikasi);
         setTeksHeaderSub(teksHeaderSub);
@@ -39,6 +49,17 @@ public class ProfilPengaturan {
         if (!this.daftarDiskonMember.containsKey("REGULER")) {
             this.daftarDiskonMember.put("REGULER", 0.0);
         }
+        this.daftarKategori = new ArrayList<>();
+        if (kategoriList != null && !kategoriList.isEmpty()) {
+            for (String k : kategoriList) {
+                if (k != null && !k.trim().isEmpty() && !this.daftarKategori.contains(k.trim())) {
+                    this.daftarKategori.add(k.trim());
+                }
+            }
+        }
+        if (!this.daftarKategori.contains("Makanan")) this.daftarKategori.add(0, "Makanan");
+        if (!this.daftarKategori.contains("Minuman")) this.daftarKategori.add(1, "Minuman");
+        if (!this.daftarKategori.contains("Elektronik")) this.daftarKategori.add(2, "Elektronik");
     }
 
     public String getNamaProfil() {
@@ -108,11 +129,29 @@ public class ProfilPengaturan {
         }
     }
 
+    public List<String> getDaftarKategori() {
+        return new ArrayList<>(daftarKategori);
+    }
+
+    public void setDaftarKategori(List<String> kategoriBaru) {
+        this.daftarKategori.clear();
+        if (kategoriBaru != null) {
+            for (String k : kategoriBaru) {
+                if (k != null && !k.trim().isEmpty() && !this.daftarKategori.contains(k.trim())) {
+                    this.daftarKategori.add(k.trim());
+                }
+            }
+        }
+        if (!this.daftarKategori.contains("Makanan")) this.daftarKategori.add(0, "Makanan");
+        if (!this.daftarKategori.contains("Minuman")) this.daftarKategori.add(1, "Minuman");
+        if (!this.daftarKategori.contains("Elektronik")) this.daftarKategori.add(2, "Elektronik");
+    }
+
     /**
      * Membuat salinan mandiri (deep copy) dari profil pengaturan.
      */
     public ProfilPengaturan salin(String namaBaru) {
         return new ProfilPengaturan(namaBaru, this.judulAplikasi, this.teksHeaderSub,
-                this.warnaHeader, this.warnaAksen, this.daftarDiskonMember);
+                this.warnaHeader, this.warnaAksen, this.daftarDiskonMember, this.daftarKategori);
     }
 }

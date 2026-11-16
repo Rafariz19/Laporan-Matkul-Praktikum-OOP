@@ -11,6 +11,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ public class DialogPengaturan extends JDialog {
     // Komponen Form Manajemen Kategori
     private DefaultTableModel modelTabelKategori;
     private JTable tabelKategoriAdmin;
+    private final transient List<String> localKategoriList;
 
     private ModernButton btnSimpanSemua;
 
@@ -65,6 +67,7 @@ public class DialogPengaturan extends JDialog {
         this.selectedHeaderColor = config.getWarnaHeader();
         this.selectedAccentColor = config.getWarnaAksen();
         this.localDiskonMap = new LinkedHashMap<>(config.getDaftarDiskonMember());
+        this.localKategoriList = new ArrayList<>(config.getDaftarKategori());
 
         initUI();
     }
@@ -254,7 +257,7 @@ public class DialogPengaturan extends JDialog {
         pnlActionDiskon.add(btnHapusDiskon);
         pnlDiskon.add(pnlActionDiskon, BorderLayout.SOUTH);
 
-        tabbedPane.addTab("🏷️ CRUD Skema Diskon Member", pnlDiskon);
+        tabbedPane.addTab("🏷️ Skema Diskon Member", pnlDiskon);
 
         // TAB 3: CRUD MANAJEMEN KATEGORI PRODUK
         JPanel pnlKategori = new JPanel(new BorderLayout(8, 8));
@@ -300,7 +303,7 @@ public class DialogPengaturan extends JDialog {
         pnlActionKategori.add(btnHapusKat);
         pnlKategori.add(pnlActionKategori, BorderLayout.SOUTH);
 
-        tabbedPane.addTab("📁 CRUD Manajemen Kategori", pnlKategori);
+        tabbedPane.addTab("📁 Manajemen Kategori", pnlKategori);
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -348,6 +351,10 @@ public class DialogPengaturan extends JDialog {
         localDiskonMap.clear();
         localDiskonMap.putAll(p.getDaftarDiskonMember());
         muatDataTabelDiskon();
+
+        localKategoriList.clear();
+        localKategoriList.addAll(p.getDaftarKategori());
+        muatDataTabelKategori();
     }
 
     private void aksiTambahTemplateBaru() {
@@ -366,6 +373,10 @@ public class DialogPengaturan extends JDialog {
 
         try {
             config.buatProfilBaruDariAktif(namaBaru.trim());
+            ProfilPengaturan baru = new ProfilPengaturan(namaBaru.trim(), 
+                txtTitle.getText().trim(), txtSubtitle.getText().trim(),
+                selectedHeaderColor, selectedAccentColor, localDiskonMap, localKategoriList);
+            config.simpanProfil(baru);
             muatComboProfil();
             cmbProfil.setSelectedItem(namaBaru.trim());
             JOptionPane.showMessageDialog(this, "Template '" + namaBaru.trim() + "' berhasil dibuat!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
@@ -548,7 +559,7 @@ public class DialogPengaturan extends JDialog {
             String sub = txtSubtitle.getText().trim();
 
             ProfilPengaturan target = new ProfilPengaturan(profileName, title, sub,
-                    selectedHeaderColor, selectedAccentColor, localDiskonMap);
+                    selectedHeaderColor, selectedAccentColor, localDiskonMap, localKategoriList);
 
             config.simpanProfil(target);
             config.aktifkanProfil(profileName);
@@ -572,11 +583,10 @@ public class DialogPengaturan extends JDialog {
     private void muatDataTabelKategori() {
         if (modelTabelKategori == null) return;
         modelTabelKategori.setRowCount(0);
-        List<String> daftar = config.getDaftarKategori();
         KatalogProduk kat = (parentFrame != null) ? parentFrame.getKatalog() : null;
 
         int no = 1;
-        for (String k : daftar) {
+        for (String k : localKategoriList) {
             int jumlahProduk = (kat != null) ? kat.hitungProdukByKategori(k) : 0;
             boolean isDasar = "Makanan".equalsIgnoreCase(k) || "Minuman".equalsIgnoreCase(k) || "Elektronik".equalsIgnoreCase(k);
             String tipe = isDasar ? "Kategori Bawaan" : "Kategori Kustom";
@@ -600,19 +610,16 @@ public class DialogPengaturan extends JDialog {
         if (input == null || input.trim().isEmpty()) return;
         String katBaru = input.trim();
 
-        try {
-            config.tambahKategori(katBaru);
-            config.simpanKeFile();
-            muatDataTabelKategori();
-            if (parentFrame != null) {
-                parentFrame.terapkanPengaturan();
+        for (String k : localKategoriList) {
+            if (k.equalsIgnoreCase(katBaru)) {
+                JOptionPane.showMessageDialog(this, "Kategori '" + katBaru + "' sudah ada di template ini!", "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-            JOptionPane.showMessageDialog(this, "Kategori '" + katBaru + "' berhasil ditambahkan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas konfigurasi: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
         }
+
+        localKategoriList.add(katBaru);
+        muatDataTabelKategori();
+        JOptionPane.showMessageDialog(this, "Kategori '" + katBaru + "' berhasil ditambahkan!\nKlik 'Simpan Pengaturan' untuk menerapkan perubahan secara permanen.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void aksiEditKategori() {
@@ -630,6 +637,11 @@ public class DialogPengaturan extends JDialog {
         }
 
         String katLama = (String) modelTabelKategori.getValueAt(row, 1);
+        if ("Makanan".equalsIgnoreCase(katLama) || "Minuman".equalsIgnoreCase(katLama) || "Elektronik".equalsIgnoreCase(katLama)) {
+            JOptionPane.showMessageDialog(this, "Kategori bawaan '" + katLama + "' tidak boleh diedit atau diubah namanya!", "Ditolak Aturan Sistem", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         String inputBaru = JOptionPane.showInputDialog(this,
             "Masukkan nama baru untuk kategori '" + katLama + "':",
             katLama);
@@ -637,27 +649,39 @@ public class DialogPengaturan extends JDialog {
         String katBaru = inputBaru.trim();
         if (katBaru.equalsIgnoreCase(katLama)) return;
 
-        try {
-            config.ubahKategori(katLama, katBaru);
-            config.simpanKeFile();
-
-            int diubah = 0;
-            if (parentFrame != null && parentFrame.getKatalog() != null) {
-                diubah = parentFrame.getKatalog().ubahNamaKategoriMassal(katLama, katBaru);
-                parentFrame.simpanKatalogKeDisk();
-                parentFrame.terapkanPengaturan();
+        for (String k : localKategoriList) {
+            if (k.equalsIgnoreCase(katBaru)) {
+                JOptionPane.showMessageDialog(this, "Kategori '" + katBaru + "' sudah ada di template ini!", "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-
-            muatDataTabelKategori();
-            JOptionPane.showMessageDialog(this, 
-                "Kategori '" + katLama + "' berhasil diubah menjadi '" + katBaru + "'!\n" +
-                (diubah > 0 ? diubah + " produk di katalog otomatis disesuaikan." : ""),
-                "Sukses", JOptionPane.INFORMATION_MESSAGE);
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
         }
+
+        int idx = -1;
+        for (int i = 0; i < localKategoriList.size(); i++) {
+            if (localKategoriList.get(i).equalsIgnoreCase(katLama)) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx >= 0) {
+            localKategoriList.set(idx, katBaru);
+        }
+
+        int diubah = 0;
+        if (parentFrame != null && parentFrame.getKatalog() != null) {
+            diubah = parentFrame.getKatalog().ubahNamaKategoriMassal(katLama, katBaru);
+            try {
+                parentFrame.simpanKatalogKeDisk();
+            } catch (Exception ignored) {
+            }
+        }
+
+        muatDataTabelKategori();
+        JOptionPane.showMessageDialog(this, 
+            "Kategori '" + katLama + "' berhasil diubah menjadi '" + katBaru + "'!\n" +
+            (diubah > 0 ? diubah + " produk di katalog otomatis disesuaikan.\n" : "") +
+            "Klik 'Simpan Pengaturan' untuk menerapkan template secara permanen.",
+            "Sukses", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void aksiHapusKategori() {
@@ -675,6 +699,11 @@ public class DialogPengaturan extends JDialog {
         }
 
         String kat = (String) modelTabelKategori.getValueAt(row, 1);
+        if ("Makanan".equalsIgnoreCase(kat) || "Minuman".equalsIgnoreCase(kat) || "Elektronik".equalsIgnoreCase(kat)) {
+            JOptionPane.showMessageDialog(this, "Kategori bawaan '" + kat + "' tidak boleh dihapus!", "Ditolak Aturan Sistem", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         KatalogProduk katObj = (parentFrame != null) ? parentFrame.getKatalog() : null;
         int jmlProduk = (katObj != null) ? katObj.hitungProdukByKategori(kat) : 0;
 
@@ -696,25 +725,17 @@ public class DialogPengaturan extends JDialog {
             }
         }
 
-        try {
-            config.hapusKategori(kat);
-            config.simpanKeFile();
+        localKategoriList.removeIf(k -> k.equalsIgnoreCase(kat));
 
-            if (jmlProduk > 0 && katObj != null) {
-                katObj.ubahNamaKategoriMassal(kat, "Makanan");
+        if (jmlProduk > 0 && katObj != null) {
+            katObj.ubahNamaKategoriMassal(kat, "Makanan");
+            try {
                 parentFrame.simpanKatalogKeDisk();
+            } catch (Exception ignored) {
             }
-
-            if (parentFrame != null) {
-                parentFrame.terapkanPengaturan();
-            }
-
-            muatDataTabelKategori();
-            JOptionPane.showMessageDialog(this, "Kategori '" + kat + "' berhasil dihapus!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Ditolak Aturan Sistem", JOptionPane.ERROR_MESSAGE);
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas konfigurasi: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
         }
+
+        muatDataTabelKategori();
+        JOptionPane.showMessageDialog(this, "Kategori '" + kat + "' berhasil dihapus dari template ini!\nKlik 'Simpan Pengaturan' untuk menerapkan perubahan.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
     }
 }

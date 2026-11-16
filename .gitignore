@@ -11,3 +11,6 @@ __pycache__/
 # File sementara Microsoft Word / Office
 ~$*.docx
 *.docx
+
+# Auto-backup data POS
+**/data/backup/

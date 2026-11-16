@@ -408,7 +408,7 @@ public class KasirDesktopFrame extends JFrame {
         txtBarcodeScan.addActionListener(e -> aksiScanBarcodeEnter());
         searchPanel.add(txtBarcodeScan);
 
-        searchPanel.add(new JLabel("Cari:"));
+        searchPanel.add(new JLabel("Nama:"));
         txtCari = new JTextField(9);
         ModernButton btnCari = new ModernButton("Cari", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnReset = new ModernButton("Reset", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
@@ -728,6 +728,13 @@ public class KasirDesktopFrame extends JFrame {
                 }
             }
         };
+
+        JLabel lblKategori = new JLabel("Kategori:");
+        lblKategori.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblKategori.setForeground(TemaWarna.APPLE_BLACK);
+        lblKategori.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        lblKategori.addMouseWheelListener(mwl);
+        pnlBarKategori.add(lblKategori);
 
         for (String kat : semuaKategori) {
             boolean isAktif = kat.equalsIgnoreCase(kategoriAktif);

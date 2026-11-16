@@ -124,6 +124,11 @@ public class PengaturanSistem {
         if (!this.daftarDiskonMember.containsKey("REGULER")) {
             this.daftarDiskonMember.put("REGULER", 0.0);
         }
+        this.daftarKategori.clear();
+        this.daftarKategori.addAll(p.getDaftarKategori());
+        if (!this.daftarKategori.contains("Makanan")) this.daftarKategori.add(0, "Makanan");
+        if (!this.daftarKategori.contains("Minuman")) this.daftarKategori.add(1, "Minuman");
+        if (!this.daftarKategori.contains("Elektronik")) this.daftarKategori.add(2, "Elektronik");
     }
 
     /**
@@ -138,7 +143,7 @@ public class PengaturanSistem {
             throw new IllegalArgumentException("[ERROR] Template dengan nama '" + namaBersih + "' sudah ada!");
         }
         ProfilPengaturan baru = new ProfilPengaturan(namaBersih, this.judulAplikasi, this.teksHeaderSub,
-                this.warnaHeader, this.warnaAksen, this.daftarDiskonMember);
+                this.warnaHeader, this.warnaAksen, this.daftarDiskonMember, this.daftarKategori);
         daftarProfil.put(namaBersih, baru);
         this.namaProfilAktif = namaBersih;
     }
@@ -169,7 +174,7 @@ public class PengaturanSistem {
             namaProfilAktif = "Settingan 1";
         }
         ProfilPengaturan aktif = new ProfilPengaturan(namaProfilAktif, this.judulAplikasi, this.teksHeaderSub,
-                this.warnaHeader, this.warnaAksen, this.daftarDiskonMember);
+                this.warnaHeader, this.warnaAksen, this.daftarDiskonMember, this.daftarKategori);
         daftarProfil.put(namaProfilAktif, aktif);
     }
 
@@ -284,6 +289,7 @@ public class PengaturanSistem {
             }
         }
         daftarKategori.add(bersih);
+        sinkronkanProfilAktifKeMap();
     }
 
     public synchronized void ubahKategori(String lama, String baru) {
@@ -314,6 +320,7 @@ public class PengaturanSistem {
             }
         }
         daftarKategori.set(idx, targetBaru);
+        sinkronkanProfilAktifKeMap();
     }
 
     public synchronized boolean hapusKategori(String kategori) {
@@ -325,7 +332,11 @@ public class PengaturanSistem {
         if ("Makanan".equalsIgnoreCase(target) || "Minuman".equalsIgnoreCase(target) || "Elektronik".equalsIgnoreCase(target)) {
             throw new IllegalArgumentException("[DITOLAK] Kategori dasar '" + target + "' adalah kategori bawaan sistem dan tidak dapat dihapus!");
         }
-        return daftarKategori.removeIf(k -> k.equalsIgnoreCase(target));
+        boolean ok = daftarKategori.removeIf(k -> k.equalsIgnoreCase(target));
+        if (ok) {
+            sinkronkanProfilAktifKeMap();
+        }
+        return ok;
     }
 
     // --- PERSISTENSI KE FILE (CRASH-SAFE ATOMIC WRITE) ---
@@ -347,7 +358,7 @@ public class PengaturanSistem {
         lines.add("# DAFTAR KATEGORI PRODUK");
         lines.add("CATEGORIES=" + String.join(",", daftarKategori));
 
-        lines.add("# DAFTAR TEMPLATE TERSIMPAN: PROFILE_ENTRY=NAMA;;;TITLE;;;SUBTITLE;;;HEADER_HEX;;;ACCENT_HEX;;;DISCOUNT_ENTRIES");
+        lines.add("# DAFTAR TEMPLATE TERSIMPAN: PROFILE_ENTRY=NAMA;;;TITLE;;;SUBTITLE;;;HEADER_HEX;;;ACCENT_HEX;;;DISCOUNT_ENTRIES;;;CATEGORIES");
         for (ProfilPengaturan p : daftarProfil.values()) {
             StringBuilder sbDisc = new StringBuilder();
             boolean first = true;
@@ -358,8 +369,9 @@ public class PengaturanSistem {
             }
             String hdrHex = String.format("#%06X", (0xFFFFFF & p.getWarnaHeader().getRGB()));
             String accHex = String.format("#%06X", (0xFFFFFF & p.getWarnaAksen().getRGB()));
+            String cats = String.join(",", p.getDaftarKategori());
             lines.add("PROFILE_ENTRY=" + p.getNamaProfil() + ";;;" + p.getJudulAplikasi() + ";;;" +
-                    p.getTeksHeaderSub() + ";;;" + hdrHex + ";;;" + accHex + ";;;" + sbDisc.toString());
+                    p.getTeksHeaderSub() + ";;;" + hdrHex + ";;;" + accHex + ";;;" + sbDisc.toString() + ";;;" + cats);
         }
 
         FileIoUtil.atomicWriteLines(PATH_SETTINGS, lines);
@@ -453,7 +465,17 @@ public class PengaturanSistem {
                         discMap.put(kv[0].trim().toUpperCase(), Double.parseDouble(kv[1].trim()));
                     }
                 }
-                ProfilPengaturan p = new ProfilPengaturan(nama, title, sub, hdr, acc, discMap);
+                List<String> catList = new ArrayList<>();
+                if (parts.length >= 7 && !parts[6].trim().isEmpty()) {
+                    String[] rawCats = parts[6].split(",");
+                    for (String c : rawCats) {
+                        String tc = c.trim();
+                        if (!tc.isEmpty() && !catList.contains(tc)) {
+                            catList.add(tc);
+                        }
+                    }
+                }
+                ProfilPengaturan p = new ProfilPengaturan(nama, title, sub, hdr, acc, discMap, catList);
                 daftarProfil.put(nama, p);
             } catch (Exception ignored) {}
         }
