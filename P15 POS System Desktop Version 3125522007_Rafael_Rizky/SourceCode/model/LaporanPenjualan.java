@@ -62,12 +62,56 @@ public class LaporanPenjualan {
         return lap;
     }
 
+    /**
+     * Mengekstrak periode bulan dan tahun dari string tanggal (misal "16-11-2026" -> "11-2026").
+     */
+    public static String ekstrakBulanTahun(String tglStr) {
+        if (tglStr == null || tglStr.trim().isEmpty()) return "";
+        String tglHanya = tglStr.trim().split(" ")[0];
+        String[] parts = tglHanya.split("-");
+        if (parts.length == 3) {
+            if (parts[0].length() == 4) {
+                // Format YYYY-MM-DD -> MM-YYYY
+                return parts[1] + "-" + parts[0];
+            } else {
+                // Format DD-MM-YYYY -> MM-YYYY
+                return parts[1] + "-" + parts[2];
+            }
+        } else if (parts.length == 2) {
+            return tglHanya;
+        }
+        return tglHanya;
+    }
+
+    public String getPeriodeBulanTahun() {
+        return ekstrakBulanTahun(this.filterTanggal);
+    }
+
+    public String getNamaBulanTahun() {
+        String bt = getPeriodeBulanTahun();
+        if (bt.isEmpty()) return "Semua Periode";
+        String[] p = bt.split("-");
+        if (p.length == 2) {
+            String[] namaBulan = {"", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                    "Juli", "Agustus", "September", "Oktober", "November", "Desember"};
+            try {
+                int bln = Integer.parseInt(p[0]);
+                if (bln >= 1 && bln <= 12) {
+                    return namaBulan[bln] + " " + p[1];
+                }
+            } catch (Exception ignored) {}
+        }
+        return bt;
+    }
+
     private void prosesData(Path pathTransaksi, Path pathTransaksiItem) throws IOException {
         if (pathTransaksi == null || !Files.exists(pathTransaksi)) {
             return;
         }
 
+        String targetBulanTahun = ekstrakBulanTahun(this.filterTanggal);
         Set<String> idNotaLunasHariIni = new HashSet<>();
+        Set<String> idNotaLunasBulanIni = new HashSet<>();
         List<String> linesTrx = Files.readAllLines(pathTransaksi, StandardCharsets.UTF_8);
 
         for (String line : linesTrx) {
@@ -86,7 +130,15 @@ public class LaporanPenjualan {
             String status = p[7].trim().toUpperCase();
             String kasir = (p.length >= 9) ? p[8] : "system";
 
-            // Saring berdasarkan tanggal (jika filterTanggal diisi)
+            // Saring transaksi LUNAS untuk agregasi Produk Terlaris (berdasarkan Bulan dan Tahun)
+            String blnTahunTrx = ekstrakBulanTahun(tglStr);
+            if ("LUNAS".equals(status)) {
+                if (targetBulanTahun.isEmpty() || targetBulanTahun.equalsIgnoreCase(blnTahunTrx)) {
+                    idNotaLunasBulanIni.add(idTrx);
+                }
+            }
+
+            // Saring berdasarkan tanggal harian (jika filterTanggal diisi)
             if (!filterTanggal.isEmpty()) {
                 String tglHanya = tglStr.split(" ")[0]; // Ambil DD-MM-YYYY
                 if (!tglHanya.equalsIgnoreCase(filterTanggal)) {
@@ -106,7 +158,7 @@ public class LaporanPenjualan {
             }
         }
 
-        // Agregasi item terlaris dari transaksi_item.txt hanya untuk nota LUNAS
+        // Agregasi produk terlaris dari transaksi_item.txt berdasarkan transaksi LUNAS di bulan & tahun terpilih
         Map<String, int[]> agregatItem = new HashMap<>(); // key -> [qty, nominal]
         Map<String, String> namaItemMap = new HashMap<>();
 
@@ -121,8 +173,7 @@ public class LaporanPenjualan {
                 if (p.length < 7) continue;
 
                 String idTrx = p[0];
-                if (idNotaLunasHariIni.contains(idTrx)) {
-                    notaYangPunyaRincian.add(idTrx);
+                if (idNotaLunasBulanIni.contains(idTrx)) {
                     String kode = p[1];
                     String nama = p[2];
                     int qty = Integer.parseInt(p[4]);
@@ -133,6 +184,9 @@ public class LaporanPenjualan {
                     data[0] += qty;
                     data[1] += subtotal;
                     agregatItem.put(kode, data);
+                }
+                if (idNotaLunasHariIni.contains(idTrx)) {
+                    notaYangPunyaRincian.add(idTrx);
                 }
             }
 

@@ -1621,6 +1621,7 @@ public class KasirDesktopFrame extends JFrame {
                 sb.append("                 RINGKASAN LAPORAN PENJUALAN HARIAN                \n");
                 sb.append("===================================================================\n");
                 sb.append("Tanggal Laporan        : ").append(lap.getFilterTanggal()).append("\n");
+                sb.append("Periode Produk Terlaris: ").append(lap.getNamaBulanTahun()).append(" (Akumulasi Bulanan)\n");
                 sb.append("Petugas Verifikasi     : ").append(currentUser.getUsername()).append(" (ADMIN)\n");
                 sb.append("-------------------------------------------------------------------\n");
                 sb.append("Jumlah Nota LUNAS      : ").append(lap.getJumlahNotaLunas()).append(" Transaksi\n");
@@ -1639,17 +1640,20 @@ public class KasirDesktopFrame extends JFrame {
                 for (LaporanPenjualan.ItemTerlaris it : lap.getProdukTerlarisTop5()) {
                     modelTop.addRow(new Object[]{no++, it.getKodeProduk(), it.getNamaProduk(), it.getTotalQty()});
                 }
+                if (tabs.getTabCount() > 1) {
+                    tabs.setTitleAt(1, "Produk Terlaris (" + lap.getNamaBulanTahun() + ")");
+                }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(dlg, "Gagal membuat laporan: " + ex.getMessage(), "Error Laporan", JOptionPane.ERROR_MESSAGE);
             }
         };
 
-        btnFilter.addActionListener(e -> muatLaporan.run());
-        muatLaporan.run();
-
         tabs.addTab("Ringkasan Finansial", new JScrollPane(txtRingkasan));
         tabs.addTab("Produk Terlaris", new JScrollPane(tblTop));
         dlg.add(tabs, BorderLayout.CENTER);
+
+        btnFilter.addActionListener(e -> muatLaporan.run());
+        muatLaporan.run();
 
         JPanel pnlBawah = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         ModernButton btnTutup = new ModernButton("Tutup", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
