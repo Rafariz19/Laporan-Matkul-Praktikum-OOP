@@ -37,7 +37,10 @@ public class ProdukFileRepository {
             String nama = p.getNama();
             String harga = String.valueOf(p.getHarga());
             String stok = String.valueOf(p.getStok());
-            String kategori = (p instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
+            String kategori = p.getKategori();
+            if (kategori == null || kategori.trim().isEmpty()) {
+                kategori = (p instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
+            }
             String extra = "";
 
             if (p instanceof ProdukMakanan) {
@@ -142,19 +145,18 @@ public class ProdukFileRepository {
                 }
             }
 
-            // Rekonstruksi objek polimorfis
-            if (kategori.equalsIgnoreCase("Makanan")) {
-                dataBaru.add(new ProdukMakanan(kode, nama, harga, stok, extra, diskonPromo));
-            } else if (kategori.equalsIgnoreCase("Elektronik")) {
+            // Rekonstruksi objek polimorfis (Mendukung Makanan, Minuman, Elektronik, & Kategori Kustom)
+            if (kategori.equalsIgnoreCase("Elektronik")) {
                 int garansi;
                 try {
                     garansi = Integer.parseInt(extra);
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("[ERROR GARANSI] Baris ke-" + nomorBaris + " garansi bulan harus angka: " + extra);
                 }
-                dataBaru.add(new ProdukElektronik(kode, nama, harga, stok, garansi, diskonPromo));
+                dataBaru.add(new ProdukElektronik(kode, nama, harga, stok, garansi, diskonPromo, kategori));
             } else {
-                throw new IllegalArgumentException("[ERROR KATEGORI] Baris ke-" + nomorBaris + " kategori '" + kategori + "' tidak dikenali.");
+                // "Makanan", "Minuman", dan kategori komoditas lainnya
+                dataBaru.add(new ProdukMakanan(kode, nama, harga, stok, extra, diskonPromo, kategori));
             }
         }
 

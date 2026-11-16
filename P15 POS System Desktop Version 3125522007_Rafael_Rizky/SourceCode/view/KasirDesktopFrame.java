@@ -4,6 +4,7 @@ import model.*;
 import model.exception.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
@@ -11,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -75,6 +78,11 @@ public class KasirDesktopFrame extends JFrame {
     private ModernButton btnGantiAkun;
     private ModernTableHeaderRenderer headerRenderer;
 
+    // Category Bar Components (Scrollable Horizontal)
+    private JPanel pnlBarKategori;
+    private final ArrayList<String> listKategoriTersedia = new ArrayList<>(Arrays.asList("Semua", "Makanan", "Minuman", "Elektronik"));
+    private String kategoriAktif = "Semua";
+
     @SuppressWarnings("this-escape")
     public KasirDesktopFrame() {
         super("Sistem Kasir Sederhana (POS Desktop) - Rafael Rizky (3125522007)");
@@ -106,6 +114,11 @@ public class KasirDesktopFrame extends JFrame {
                 try {
                     simpanKatalogAmanKeFile(PATH_PRODUK);
                 } catch (IOException ignored) {}
+            }
+        }
+        for (String kat : katalog.getDaftarKategoriUnik()) {
+            if (!listKategoriTersedia.contains(kat)) {
+                listKategoriTersedia.add(kat);
             }
         }
     }
@@ -325,6 +338,7 @@ public class KasirDesktopFrame extends JFrame {
 
         // Perbarui pilihan membership di ComboBox
         updateComboBoxMember();
+        renderBarKategori();
         if (transaksiAktif != null) {
             transaksiAktif.getPelanggan().setPengaturanSistem(pengaturanSistem);
             updateKalkulasiFinansial();
@@ -396,15 +410,56 @@ public class KasirDesktopFrame extends JFrame {
 
         topPanel.add(row1);
         topPanel.add(Box.createVerticalStrut(4));
+
+        // Category Bar Row (Scrollable Horizontal)
+        pnlBarKategori = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        pnlBarKategori.setBackground(TemaWarna.APPLE_CANVAS);
+
+        JScrollPane scrollKategori = new JScrollPane(pnlBarKategori);
+        scrollKategori.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollKategori.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scrollKategori.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
+        scrollKategori.getViewport().setBackground(TemaWarna.APPLE_CANVAS);
+        scrollKategori.setBackground(TemaWarna.APPLE_CANVAS);
+        scrollKategori.getHorizontalScrollBar().setUnitIncrement(16);
+        scrollKategori.setPreferredSize(new Dimension(0, 38));
+
+        topPanel.add(scrollKategori);
+        topPanel.add(Box.createVerticalStrut(4));
         panel.add(topPanel, BorderLayout.NORTH);
 
-        String[] cols = {"Kode", "Nama Produk", "Kategori", "Harga (Rp)", "Stok", "Info Khusus"};
+        String[] cols = {"Kode", "Nama Produk", "Harga (Rp)", "Stok", "Info Khusus"};
         modelKatalog = new DefaultTableModel(cols, 0) {
             private static final long serialVersionUID = 1L;
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
-        tabelKatalog = new JTable(modelKatalog);
+        tabelKatalog = new JTable(modelKatalog) {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public void changeSelection(int rowIndex, int columnIndex, boolean toggle, boolean extend) {
+                if (isRowSelected(rowIndex) && !extend && !toggle) {
+                    clearSelection();
+                } else {
+                    super.changeSelection(rowIndex, columnIndex, toggle, extend);
+                }
+            }
+        };
+        tabelKatalog.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                int row = tabelKatalog.rowAtPoint(e.getPoint());
+                if (row == -1) {
+                    tabelKatalog.clearSelection();
+                }
+            }
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && tabelKatalog.getSelectedRow() >= 0) {
+                    aksiTambahKeKeranjang();
+                }
+            }
+        });
         tabelKatalog.setRowHeight(25);
         tabelKatalog.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         if (headerRenderer == null) {
@@ -417,6 +472,8 @@ public class KasirDesktopFrame extends JFrame {
         tabelKatalog.setSelectionBackground(pengaturanSistem.getWarnaAksen());
         tabelKatalog.setSelectionForeground(TemaWarna.getKontrasForeground(pengaturanSistem.getWarnaAksen()));
         tabelKatalog.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        renderBarKategori();
         muatTabelKatalog();
 
         JScrollPane scrollKatalog = new JScrollPane(tabelKatalog);
@@ -479,7 +536,32 @@ public class KasirDesktopFrame extends JFrame {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
-        tabelKeranjang = new JTable(modelKeranjang);
+        tabelKeranjang = new JTable(modelKeranjang) {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public void changeSelection(int rowIndex, int columnIndex, boolean toggle, boolean extend) {
+                if (isRowSelected(rowIndex) && !extend && !toggle) {
+                    clearSelection();
+                } else {
+                    super.changeSelection(rowIndex, columnIndex, toggle, extend);
+                }
+            }
+        };
+        tabelKeranjang.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                int row = tabelKeranjang.rowAtPoint(e.getPoint());
+                if (row == -1) {
+                    tabelKeranjang.clearSelection();
+                }
+            }
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && tabelKeranjang.getSelectedRow() >= 0) {
+                    aksiUbahQtyItemKeranjang();
+                }
+            }
+        });
         tabelKeranjang.setRowHeight(25);
         tabelKeranjang.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tabelKeranjang.getTableHeader().setPreferredSize(new Dimension(0, 32));
@@ -487,6 +569,7 @@ public class KasirDesktopFrame extends JFrame {
         tabelKeranjang.setGridColor(TemaWarna.BORDER_DIVIDER);
         tabelKeranjang.setSelectionBackground(pengaturanSistem.getWarnaAksen());
         tabelKeranjang.setSelectionForeground(TemaWarna.getKontrasForeground(pengaturanSistem.getWarnaAksen()));
+        tabelKeranjang.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         JScrollPane scrollKeranjang = new JScrollPane(tabelKeranjang);
         scrollKeranjang.getViewport().setBackground(Color.WHITE);
@@ -498,8 +581,11 @@ public class KasirDesktopFrame extends JFrame {
 
         JPanel cartActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         cartActions.setBackground(TemaWarna.APPLE_CANVAS);
+        ModernButton btnEditQty = new ModernButton("Ubah Qty", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         ModernButton btnHapusItem = new ModernButton("Batalkan Item", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
         ModernButton btnResetTrx = new ModernButton("Reset Transaksi", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
+
+        btnEditQty.addActionListener(e -> aksiUbahQtyItemKeranjang());
 
         btnHapusItem.addActionListener(e -> aksiBatalkanItemKeranjang());
         btnResetTrx.addActionListener(e -> {
@@ -511,6 +597,7 @@ public class KasirDesktopFrame extends JFrame {
             mulaiTransaksiBaru();
             muatTabelKatalog();
         });
+        cartActions.add(btnEditQty);
         cartActions.add(btnHapusItem);
         cartActions.add(btnResetTrx);
         bottomContainer.add(cartActions, BorderLayout.NORTH);
@@ -577,11 +664,129 @@ public class KasirDesktopFrame extends JFrame {
         return panel;
     }
 
+    private void renderBarKategori() {
+        if (pnlBarKategori == null) return;
+        pnlBarKategori.removeAll();
+
+        for (String kat : katalog.getDaftarKategoriUnik()) {
+            if (!listKategoriTersedia.contains(kat)) {
+                listKategoriTersedia.add(kat);
+            }
+        }
+
+        Color aksen = pengaturanSistem.getWarnaAksen();
+        Color fgAksen = TemaWarna.getKontrasForeground(aksen);
+
+        for (String kat : listKategoriTersedia) {
+            boolean isAktif = kat.equalsIgnoreCase(kategoriAktif);
+            ModernButton btnKat;
+            if (isAktif) {
+                btnKat = new ModernButton(kat, aksen, fgAksen);
+                btnKat.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            } else {
+                btnKat = new ModernButton(kat, TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
+                btnKat.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            }
+            btnKat.setMargin(new Insets(3, 10, 3, 10));
+            btnKat.addActionListener(e -> {
+                kategoriAktif = kat;
+                renderBarKategori();
+                if (txtCari != null && !txtCari.getText().trim().isEmpty()) {
+                    filterKatalog(txtCari.getText().trim());
+                } else {
+                    muatTabelKatalog();
+                }
+            });
+            pnlBarKategori.add(btnKat);
+        }
+
+        ModernButton btnTambah = new ModernButton("+ Tambah Kategori", TemaWarna.APPLE_BLACK, TemaWarna.TEKS_PUTIH);
+        btnTambah.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnTambah.setMargin(new Insets(3, 10, 3, 10));
+        btnTambah.addActionListener(e -> aksiTambahKategoriBaru());
+        pnlBarKategori.add(btnTambah);
+
+        pnlBarKategori.revalidate();
+        pnlBarKategori.repaint();
+    }
+
+    private void aksiTambahKategoriBaru() {
+        String input = JOptionPane.showInputDialog(this,
+            "Masukkan Nama Kategori Baru:",
+            "Tambah Kategori Produk",
+            JOptionPane.QUESTION_MESSAGE);
+        if (input == null) return;
+        String katBaru = input.trim();
+        if (katBaru.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nama kategori tidak boleh kosong!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        for (String k : listKategoriTersedia) {
+            if (k.equalsIgnoreCase(katBaru)) {
+                kategoriAktif = k;
+                renderBarKategori();
+                muatTabelKatalog();
+                return;
+            }
+        }
+        listKategoriTersedia.add(katBaru);
+        kategoriAktif = katBaru;
+        renderBarKategori();
+        muatTabelKatalog();
+        JOptionPane.showMessageDialog(this, "Kategori '" + katBaru + "' berhasil ditambahkan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void sesuaikanLebarKolomKatalog() {
+        if (tabelKatalog == null || tabelKatalog.getColumnModel().getColumnCount() < 5) return;
+        TableColumnModel cm = tabelKatalog.getColumnModel();
+        // 0: Kode (disesuaikan dengan string AAAA: ~55px)
+        cm.getColumn(0).setPreferredWidth(55);
+        cm.getColumn(0).setMinWidth(45);
+        cm.getColumn(0).setMaxWidth(75);
+        // 1: Nama Produk
+        cm.getColumn(1).setPreferredWidth(170);
+        // 2: Harga (Rp)
+        cm.getColumn(2).setPreferredWidth(85);
+        cm.getColumn(2).setMinWidth(75);
+        cm.getColumn(2).setMaxWidth(110);
+        // 3: Stok (disesuaikan dengan integer 999999: ~65px)
+        cm.getColumn(3).setPreferredWidth(65);
+        cm.getColumn(3).setMinWidth(55);
+        cm.getColumn(3).setMaxWidth(85);
+        // 4: Info Khusus
+        cm.getColumn(4).setPreferredWidth(140);
+    }
+
+    private void sesuaikanLebarKolomKeranjang() {
+        if (tabelKeranjang == null || tabelKeranjang.getColumnModel().getColumnCount() < 5) return;
+        TableColumnModel cm = tabelKeranjang.getColumnModel();
+        // 0: Kode (AAAA)
+        cm.getColumn(0).setPreferredWidth(55);
+        cm.getColumn(0).setMinWidth(45);
+        cm.getColumn(0).setMaxWidth(75);
+        // 1: Nama Produk
+        cm.getColumn(1).setPreferredWidth(150);
+        // 2: Qty (int)
+        cm.getColumn(2).setPreferredWidth(45);
+        cm.getColumn(2).setMinWidth(40);
+        cm.getColumn(2).setMaxWidth(65);
+        // 3: Diskon Item
+        cm.getColumn(3).setPreferredWidth(75);
+        cm.getColumn(3).setMinWidth(65);
+        cm.getColumn(3).setMaxWidth(95);
+        // 4: Subtotal (Rp)
+        cm.getColumn(4).setPreferredWidth(95);
+        cm.getColumn(4).setMinWidth(85);
+        cm.getColumn(4).setMaxWidth(130);
+    }
+
     private void muatTabelKatalog() {
         modelKatalog.setRowCount(0);
         for (Produk p : katalog.getDaftarProdukReadOnly()) {
+            if (!kategoriAktif.equalsIgnoreCase("Semua") && !p.getKategori().equalsIgnoreCase(kategoriAktif)) {
+                continue;
+            }
             String infoKhusus = "";
-            String kategori = (p instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
             if (p instanceof ProdukMakanan) {
                 ProdukMakanan pm = (ProdukMakanan) p;
                 long sisaHari = pm.hitungSisaHari();
@@ -603,10 +808,11 @@ public class KasirDesktopFrame extends JFrame {
                 labelStok = p.getStok() + " [MENIPIS]";
             }
             modelKatalog.addRow(new Object[]{
-                p.getKode(), p.getNama(), kategori,
+                p.getKode(), p.getNama(),
                 String.format("%,d", p.getHarga()), labelStok, infoKhusus
             });
         }
+        sesuaikanLebarKolomKatalog();
     }
 
     private void filterKatalog(String kw) {
@@ -616,6 +822,9 @@ public class KasirDesktopFrame extends JFrame {
         }
         modelKatalog.setRowCount(0);
         for (Produk p : katalog.cariProdukByNama(kw)) {
+            if (!kategoriAktif.equalsIgnoreCase("Semua") && !p.getKategori().equalsIgnoreCase(kategoriAktif)) {
+                continue;
+            }
             String infoKhusus = "";
             if (p instanceof ProdukMakanan) {
                 ProdukMakanan pm = (ProdukMakanan) p;
@@ -638,10 +847,11 @@ public class KasirDesktopFrame extends JFrame {
                 labelStok = p.getStok() + " [MENIPIS]";
             }
             modelKatalog.addRow(new Object[]{
-                p.getKode(), p.getNama(), (p instanceof ProdukMakanan ? "Makanan" : "Elektronik"),
+                p.getKode(), p.getNama(),
                 String.format("%,d", p.getHarga()), labelStok, infoKhusus
             });
         }
+        sesuaikanLebarKolomKatalog();
     }
 
     private void aksiTambahKeKeranjang() {
@@ -682,6 +892,51 @@ public class KasirDesktopFrame extends JFrame {
                 String.format("%,d", item.hitungSubtotal())
             });
         }
+        sesuaikanLebarKolomKeranjang();
+    }
+
+    private void aksiUbahQtyItemKeranjang() {
+        int row = tabelKeranjang.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Pilih baris item belanja di keranjang yang ingin diubah kuantitasnya!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        ItemTransaksi item = transaksiAktif.getDaftarItem().get(row);
+        Produk prod = item.getProduk();
+        int qtyLama = item.getJumlahBeli();
+        int sisaStokToko = prod.getStok();
+        int maxBoleh = qtyLama + sisaStokToko;
+
+        String input = JOptionPane.showInputDialog(this,
+            "Ubah kuantitas untuk: " + item.getNamaProduk() + "\n" +
+            "Kuantitas saat ini di keranjang: " + qtyLama + "\n" +
+            "Sisa stok di rak inventaris: " + sisaStokToko + " (Maksimal dapat diubah ke: " + maxBoleh + ")\n\n" +
+            "Masukkan jumlah kuantitas baru (ketik 0 untuk batalkan item):",
+            String.valueOf(qtyLama));
+
+        if (input == null || input.trim().isEmpty()) return;
+
+        try {
+            int qtyBaru = Integer.parseInt(input.trim());
+            if (qtyBaru == qtyLama) return;
+            if (qtyBaru < 0) {
+                JOptionPane.showMessageDialog(this, "Jumlah kuantitas tidak boleh negatif!", "Format Salah", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (qtyBaru == 0) {
+                transaksiAktif.batalkanItem(row);
+            } else {
+                transaksiAktif.ubahKuantitasItem(row, qtyBaru);
+            }
+            muatTabelKeranjang();
+            muatTabelKatalog();
+            updateKalkulasiFinansial();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Jumlah kuantitas harus berupa angka bulat!", "Error Format", JOptionPane.ERROR_MESSAGE);
+        } catch (KasirException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Aturan Kasir", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void aksiBatalkanItemKeranjang() {
@@ -707,16 +962,22 @@ public class KasirDesktopFrame extends JFrame {
         double tagihan = transaksiAktif.hitungTotalBayar();
         if (idx == 0) { // TUNAI
             txtBayarTunai.setEnabled(true);
+            txtBayarTunai.setEditable(true);
             txtNominalQris.setEnabled(false);
+            txtNominalQris.setEditable(false);
             txtNominalQris.setText("0");
         } else if (idx == 1) { // QRIS
             txtBayarTunai.setEnabled(false);
+            txtBayarTunai.setEditable(false);
             txtBayarTunai.setText("0");
-            txtNominalQris.setEnabled(true);
+            txtNominalQris.setEnabled(false); // Nilai nominal QRIS terkunci & tidak bisa diubah-ubah
+            txtNominalQris.setEditable(false);
             txtNominalQris.setText(String.format("%.0f", tagihan));
         } else if (idx == 2) { // SPLIT
             txtBayarTunai.setEnabled(true);
+            txtBayarTunai.setEditable(true);
             txtNominalQris.setEnabled(true);
+            txtNominalQris.setEditable(true);
             double separuh = Math.floor(tagihan / 2);
             txtBayarTunai.setText(String.format("%.0f", separuh));
             txtNominalQris.setText(String.format("%.0f", tagihan - separuh));
@@ -770,9 +1031,14 @@ public class KasirDesktopFrame extends JFrame {
 
     private void updateKalkulasiFinansial() {
         if (transaksiAktif == null) return;
+        double tagihan = transaksiAktif.hitungTotalBayar();
         lblTotalKotor.setText(String.format("Rp %,d", transaksiAktif.hitungTotalSubtotal()));
         lblDiskonMember.setText(String.format("Rp %,.0f", transaksiAktif.hitungDiskonNominal()));
-        lblTotalTagihan.setText(String.format("Rp %,.0f", transaksiAktif.hitungTotalBayar()));
+        lblTotalTagihan.setText(String.format("Rp %,.0f", tagihan));
+
+        if (cmbMetodeBayar != null && cmbMetodeBayar.getSelectedIndex() == 1 && txtNominalQris != null) {
+            txtNominalQris.setText(String.format("%.0f", tagihan));
+        }
         hitungKembalianLive();
     }
 
@@ -970,9 +1236,9 @@ public class KasirDesktopFrame extends JFrame {
         }
 
         JDialog dlg = new JDialog(this, "Edit Data Produk - " + p.getKode(), true);
-        dlg.setSize(440, 390);
+        dlg.setSize(440, 430);
         dlg.setLocationRelativeTo(this);
-        dlg.setLayout(new GridLayout(7, 2, 8, 8));
+        dlg.setLayout(new GridLayout(8, 2, 8, 8));
         dlg.getRootPane().setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         JTextField txtKode = new JTextField(p.getKode());
@@ -981,6 +1247,17 @@ public class KasirDesktopFrame extends JFrame {
 
         final boolean sedangDiKeranjang = (transaksiAktif != null && transaksiAktif.adaProdukAktif(kode));
         final int qtyDiKeranjang = (transaksiAktif != null ? transaksiAktif.getKuantitasItemAktif(kode) : 0);
+
+        JComboBox<String> cmbKategori = new JComboBox<>();
+        for (String k : listKategoriTersedia) {
+            if (!k.equalsIgnoreCase("Semua")) {
+                cmbKategori.addItem(k);
+            }
+        }
+        if (p.getKategori() != null && !p.getKategori().isEmpty() && !listKategoriTersedia.contains(p.getKategori())) {
+            cmbKategori.addItem(p.getKategori());
+        }
+        cmbKategori.setSelectedItem(p.getKategori());
 
         JTextField txtNama = new JTextField(p.getNama());
         JTextField txtHarga = new JTextField(String.valueOf(p.getHarga()));
@@ -1006,6 +1283,8 @@ public class KasirDesktopFrame extends JFrame {
 
         dlg.add(new JLabel("Kode Produk:"));
         dlg.add(txtKode);
+        dlg.add(new JLabel("Kategori Produk:"));
+        dlg.add(cmbKategori);
         dlg.add(new JLabel("Nama Produk:"));
         dlg.add(txtNama);
         dlg.add(new JLabel("Harga (Rp):"));
@@ -1040,9 +1319,18 @@ public class KasirDesktopFrame extends JFrame {
                     diskonPromoBaru = valDiskon / 100.0;
                 }
 
-                katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru, diskonPromoBaru);
+                String kategoriBaru = (String) cmbKategori.getSelectedItem();
+                if (kategoriBaru == null || kategoriBaru.trim().isEmpty()) {
+                    kategoriBaru = p.getKategori();
+                }
+
+                katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru, diskonPromoBaru, kategoriBaru);
                 simpanKatalogAmanKeFile(PATH_PRODUK);
 
+                if (!listKategoriTersedia.contains(kategoriBaru)) {
+                    listKategoriTersedia.add(kategoriBaru);
+                }
+                renderBarKategori();
                 muatTabelKatalog();
                 dlg.dispose();
                 JOptionPane.showMessageDialog(this, "Data produk '" + p.getKode() + "' berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
@@ -1064,12 +1352,21 @@ public class KasirDesktopFrame extends JFrame {
         }
 
         JDialog dlg = new JDialog(this, "Registrasi Komoditas Produk Baru", true);
-        dlg.setSize(440, 420);
+        dlg.setSize(440, 460);
         dlg.setLocationRelativeTo(this);
-        dlg.setLayout(new GridLayout(8, 2, 8, 8));
+        dlg.setLayout(new GridLayout(9, 2, 8, 8));
         dlg.getRootPane().setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         JComboBox<String> cmbJenis = new JComboBox<>(new String[]{"Makanan & Minuman", "Elektronik & Gadget"});
+        JComboBox<String> cmbKategori = new JComboBox<>();
+        cmbKategori.setEditable(true);
+        for (String k : listKategoriTersedia) {
+            if (!k.equalsIgnoreCase("Semua")) {
+                cmbKategori.addItem(k);
+            }
+        }
+        cmbKategori.setSelectedItem("Makanan");
+
         JTextField txtKode = new JTextField();
         JTextField txtNama = new JTextField();
         JTextField txtHarga = new JTextField();
@@ -1082,14 +1379,22 @@ public class KasirDesktopFrame extends JFrame {
             if (cmbJenis.getSelectedIndex() == 0) {
                 lblExtra.setText("Tgl Kadaluarsa (yyyy-MM-dd):");
                 txtExtra.setText("2026-12-31");
+                if ("Elektronik".equalsIgnoreCase((String) cmbKategori.getSelectedItem())) {
+                    cmbKategori.setSelectedItem("Makanan");
+                }
             } else {
                 lblExtra.setText("Garansi Resmi (Bulan):");
                 txtExtra.setText("12");
+                if ("Makanan".equalsIgnoreCase((String) cmbKategori.getSelectedItem()) || "Minuman".equalsIgnoreCase((String) cmbKategori.getSelectedItem())) {
+                    cmbKategori.setSelectedItem("Elektronik");
+                }
             }
         });
 
-        dlg.add(new JLabel("Kategori Produk:"));
+        dlg.add(new JLabel("Jenis Komoditas:"));
         dlg.add(cmbJenis);
+        dlg.add(new JLabel("Kategori Produk:"));
+        dlg.add(cmbKategori);
         dlg.add(new JLabel("Kode Produk (Unik):"));
         dlg.add(txtKode);
         dlg.add(new JLabel("Nama Produk:"));
@@ -1127,16 +1432,27 @@ public class KasirDesktopFrame extends JFrame {
                     diskonPromo = valDiskon / 100.0;
                 }
 
+                Object katObj = cmbKategori.getSelectedItem();
+                String kategoriPilihan = (katObj != null) ? katObj.toString().trim() : "";
+                if (kategoriPilihan.isEmpty()) {
+                    kategoriPilihan = (cmbJenis.getSelectedIndex() == 0) ? "Makanan" : "Elektronik";
+                }
+
                 Produk p;
                 if (cmbJenis.getSelectedIndex() == 0) {
-                    p = new ProdukMakanan(kode, nama, harga, stok, extra, diskonPromo);
+                    p = new ProdukMakanan(kode, nama, harga, stok, extra, diskonPromo, kategoriPilihan);
                 } else {
                     int garansi = Integer.parseInt(extra);
-                    p = new ProdukElektronik(kode, nama, harga, stok, garansi, diskonPromo);
+                    p = new ProdukElektronik(kode, nama, harga, stok, garansi, diskonPromo, kategoriPilihan);
                 }
 
                 katalog.tambahProduk(p);
                 simpanKatalogAmanKeFile(PATH_PRODUK);
+
+                if (!listKategoriTersedia.contains(kategoriPilihan)) {
+                    listKategoriTersedia.add(kategoriPilihan);
+                }
+                renderBarKategori();
                 muatTabelKatalog();
                 dlg.dispose();
                 JOptionPane.showMessageDialog(this, "Produk baru berhasil didaftarkan ke katalog dan berkas disk!", "Sukses", JOptionPane.INFORMATION_MESSAGE);

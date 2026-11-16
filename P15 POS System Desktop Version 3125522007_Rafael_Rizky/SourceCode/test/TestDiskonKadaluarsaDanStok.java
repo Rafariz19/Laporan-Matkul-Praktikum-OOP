@@ -59,10 +59,10 @@ public class TestDiskonKadaluarsaDanStok {
 
         // Kasus 5: Expired 2026-10-05 (4 hari) -> Diskon 25%
         ProdukMakanan pm5 = new ProdukMakanan("MK05", "Susu Segar B", 20000, 10, "2026-10-05");
-        long sisa4b = pm5.hitungSisaHari(clockBase);
+        long sisa5 = pm5.hitungSisaHari(clockBase);
         double d5 = pm5.hitungDiskonKedaluwarsa(clockBase);
-        if (sisa4b != 4 || Math.abs(d5 - 0.25) > 0.0001) {
-            throw new AssertionError("Gagal Kasus 5 (4 hari): sisa=" + sisa4b + ", diskon=" + d5);
+        if (sisa5 != 4 || Math.abs(d5 - 0.25) > 0.0001) {
+            throw new AssertionError("Gagal Kasus 5 (4 hari): sisa=" + sisa5 + ", diskon=" + d5);
         }
 
         // Kasus 6: Expired 2026-10-04 (3 hari) -> Diskon 40%

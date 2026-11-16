@@ -110,6 +110,28 @@ public class KatalogProduk {
         if (p == null) {
             return false;
         }
+        return ubahProduk(kode, namaBaru, hargaBaru, stokBaru, extraBaru, diskonPromoBaru, p.getKategori());
+    }
+
+    /**
+     * Memperbarui / mengedit atribut data produk lengkap termasuk diskon promo dan kategori.
+     * Menerapkan prinsip Atomic Invariant: Validasi menyeluruh dilakukan SEBELUM mutasi state.
+     * 
+     * @param kode             kode produk yang akan diedit
+     * @param namaBaru         nama baru produk
+     * @param hargaBaru        harga satuan baru produk
+     * @param stokBaru         jumlah stok baru produk
+     * @param extraBaru        info khusus (tanggal kadaluarsa untuk makanan, garansi untuk elektronik)
+     * @param diskonPromoBaru  rasio promo barang baru (0.0 s/d 1.0)
+     * @param kategoriBaru     label kategori baru
+     * @return true jika produk berhasil diperbarui, false jika kode tidak ditemukan
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
+     */
+    public boolean ubahProduk(String kode, String namaBaru, int hargaBaru, int stokBaru, String extraBaru, double diskonPromoBaru, String kategoriBaru) {
+        Produk p = cariProduk(kode);
+        if (p == null) {
+            return false;
+        }
 
         // --- PRE-VALIDASI KETAT (ATOMIC INVARIANCE MODUL 10 & 11) ---
         if (namaBaru == null || namaBaru.trim().isEmpty()) {
@@ -125,6 +147,9 @@ public class KatalogProduk {
             throw new IllegalArgumentException(String.format(
                 "[ERROR VALIDASI] Rasio diskon promo barang harus di antara 0.0 dan 1.0! (Diberikan: %.2f)", diskonPromoBaru
             ));
+        }
+        if (kategoriBaru != null && (kategoriBaru.contains("|") || kategoriBaru.contains("\n") || kategoriBaru.contains("\r"))) {
+            throw new IllegalArgumentException("[ERROR SANITASI] Kategori tidak boleh mengandung pemisah '|' atau baris baru!");
         }
 
         int parsedGaransi = 0;
@@ -151,6 +176,9 @@ public class KatalogProduk {
         p.ubahHarga(hargaBaru);
         p.ubahStok(stokBaru);
         p.ubahDiskonPromo(diskonPromoBaru);
+        if (kategoriBaru != null && !kategoriBaru.trim().isEmpty()) {
+            p.ubahKategori(kategoriBaru.trim());
+        }
 
         if (p instanceof ProdukMakanan) {
             ((ProdukMakanan) p).ubahTanggalKadaluarsa(extraBaru.trim());
@@ -295,15 +323,29 @@ public class KatalogProduk {
             int stokEfektif = p.getStok() + extra;
             if (p instanceof ProdukMakanan) {
                 snapshot.tambahProduk(new ProdukMakanan(
-                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukMakanan) p).getTanggalKadaluarsa(), p.getDiskonPromo()
+                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukMakanan) p).getTanggalKadaluarsa(), p.getDiskonPromo(), p.getKategori()
                 ));
             } else if (p instanceof ProdukElektronik) {
                 snapshot.tambahProduk(new ProdukElektronik(
-                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukElektronik) p).getGaransiBulan(), p.getDiskonPromo()
+                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukElektronik) p).getGaransiBulan(), p.getDiskonPromo(), p.getKategori()
                 ));
             }
         }
         return snapshot;
+    }
+
+    /**
+     * Mengembalikan daftar nama kategori unik yang saat ini terdaftar di katalog.
+     */
+    public List<String> getDaftarKategoriUnik() {
+        List<String> list = new ArrayList<>();
+        for (Produk p : daftarProduk) {
+            String k = p.getKategori();
+            if (k != null && !k.trim().isEmpty() && !list.contains(k.trim())) {
+                list.add(k.trim());
+            }
+        }
+        return list;
     }
 }
 

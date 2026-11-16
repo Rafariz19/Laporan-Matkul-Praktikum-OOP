@@ -56,7 +56,23 @@ public class ProdukMakanan extends Produk implements DapatDidiskon {
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
     public ProdukMakanan(String kode, String nama, int harga, int stok, String tanggalKadaluarsa, double diskonPromo) {
-        super(kode, nama, harga, stok, diskonPromo);
+        this(kode, nama, harga, stok, tanggalKadaluarsa, diskonPromo, "Makanan");
+    }
+
+    /**
+     * Constructor Overloaded ProdukMakanan lengkap dengan diskon promo dan kategori spesifik.
+     * 
+     * @param kode              kode barang makanan
+     * @param nama              nama barang makanan
+     * @param harga             harga satuan makanan (> 0)
+     * @param stok              jumlah stok makanan (>= 0)
+     * @param tanggalKadaluarsa tanggal masa berlaku kadaluarsa (format: yyyy-MM-dd atau dd-MM-yyyy)
+     * @param diskonPromo       rasio diskon promosi barang (0.0 s/d 1.0)
+     * @param kategori          nama kategori (misal: "Makanan", "Minuman", atau kategori kustom)
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
+     */
+    public ProdukMakanan(String kode, String nama, int harga, int stok, String tanggalKadaluarsa, double diskonPromo, String kategori) {
+        super(kode, nama, harga, stok, diskonPromo, kategori);
         this.tanggalKadaluarsaDate = parseTanggal(tanggalKadaluarsa);
     }
 

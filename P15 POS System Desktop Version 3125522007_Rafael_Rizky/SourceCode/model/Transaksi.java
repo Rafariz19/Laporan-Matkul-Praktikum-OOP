@@ -184,6 +184,54 @@ public class Transaksi {
         System.out.println("[INFO] Item " + itemDihapus.getProduk().getNama() + " (" + itemDihapus.getJumlahBeli() + " unit) dibatalkan dari transaksi dan stok inventaris dikembalikan.");
     }
 
+    /**
+     * Mengubah kuantitas item pada keranjang belanja aktif.
+     * Menerapkan prinsip Atomic Invariant:
+     * - Menghitung selisih kuantitas (delta = jumlahBaru - qtyLama).
+     * - Jika delta > 0, kurangi stok fisik dari produk (memverifikasi ketersediaan stok).
+     * - Jika delta < 0, kembalikan stok fisik ke objek produk.
+     * - Mutasi kuantitas item dilakukan HANYA jika operasi stok berhasil tanpa exception.
+     * 
+     * @param index      indeks baris item belanja (0-indexed)
+     * @param jumlahBaru kuantitas baru yang diminta (> 0)
+     * @throws KasirException jika status transaksi bukan PENDING atau stok produk tidak mencukupi
+     * @throws IllegalArgumentException jika jumlahBaru <= 0
+     * @throws IndexOutOfBoundsException jika index tidak valid
+     */
+    public void ubahKuantitasItem(int index, int jumlahBaru) throws KasirException {
+        if (!"PENDING".equals(this.statusTransaksi)) {
+            throw new StatusTransaksiInvalidException(this.idTransaksi, this.statusTransaksi, "ubahKuantitasItem");
+        }
+        if (index < 0 || index >= daftarItem.size()) {
+            throw new IndexOutOfBoundsException(String.format(
+                "[ERROR VALIDASI] Indeks item tidak valid! (Indeks: %d, Jumlah Item: %d)",
+                index, daftarItem.size()
+            ));
+        }
+        if (jumlahBaru <= 0) {
+            throw new IllegalArgumentException("[ERROR VALIDASI] Jumlah beli baru harus lebih besar dari 0! (Diberikan: " + jumlahBaru + ")");
+        }
+
+        ItemTransaksi item = daftarItem.get(index);
+        int qtyLama = item.getJumlahBeli();
+        if (jumlahBaru == qtyLama) {
+            return;
+        }
+
+        int delta = jumlahBaru - qtyLama;
+        Produk p = item.getProduk();
+        if (delta > 0) {
+            // Memerlukan pengurangan stok tambahan (fail-fast jika stok kurang)
+            p.kurangiStok(delta);
+        } else {
+            // Mengurangi kuantitas di keranjang -> pulihkan stok ke produk
+            p.tambahStok(-delta);
+        }
+
+        item.ubahJumlahBeli(jumlahBaru);
+        System.out.println("[INFO] Kuantitas item " + p.getNama() + " berhasil diubah dari " + qtyLama + " ke " + jumlahBaru + " unit.");
+    }
+
     // --- METODE KALKULASI FINANSIAL TRANSAKSI ---
 
     /**

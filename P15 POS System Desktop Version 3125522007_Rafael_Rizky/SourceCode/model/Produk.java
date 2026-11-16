@@ -22,6 +22,7 @@ public abstract class Produk {
     private int harga;
     private int stok;
     private double diskonPromo; // Rasio diskon promo produk (0.0 s/d 1.0)
+    private String kategori;    // Label kategori produk (misal: "Makanan", "Minuman", "Elektronik")
 
     /**
      * Constructor Superclass Produk dengan validasi parameter awal (Preconditions).
@@ -34,7 +35,7 @@ public abstract class Produk {
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
     public Produk(String kode, String nama, int harga, int stok) {
-        this(kode, nama, harga, stok, 0.0);
+        this(kode, nama, harga, stok, 0.0, null);
     }
 
     /**
@@ -48,6 +49,21 @@ public abstract class Produk {
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
     public Produk(String kode, String nama, int harga, int stok, double diskonPromo) {
+        this(kode, nama, harga, stok, diskonPromo, null);
+    }
+
+    /**
+     * Constructor Overloaded Superclass Produk lengkap dengan penetapan diskon promo dan kategori.
+     * 
+     * @param kode        kode unik produk (tidak boleh null atau kosong)
+     * @param nama        nama produk (tidak boleh null atau kosong)
+     * @param harga       harga satuan produk (harus lebih besar dari 0)
+     * @param stok        jumlah stok awal produk (tidak boleh negatif)
+     * @param diskonPromo persentase rasio diskon promosi (0.0 s/d 1.0)
+     * @param kategori    nama kategori komoditas
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
+     */
+    public Produk(String kode, String nama, int harga, int stok, double diskonPromo, String kategori) {
         if (kode == null || kode.trim().isEmpty()) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Kode produk tidak boleh null atau kosong!");
         }
@@ -71,12 +87,16 @@ public abstract class Produk {
                 "[ERROR VALIDASI] Rasio diskon promo barang harus di antara 0.0 dan 1.0! (Diberikan: %.2f)", diskonPromo
             ));
         }
+        if (kategori != null && (kategori.contains("|") || kategori.contains("\n") || kategori.contains("\r"))) {
+            throw new IllegalArgumentException("[ERROR SANITASI] Kategori tidak boleh mengandung pemisah '|' atau baris baru!");
+        }
 
         this.kode = kode.trim();
         this.nama = nama.trim();
         this.harga = harga;
         this.stok = stok;
         this.diskonPromo = diskonPromo;
+        this.kategori = (kategori != null && !kategori.trim().isEmpty()) ? kategori.trim() : null;
     }
 
     // --- GETTER METHODS ---
@@ -99,6 +119,23 @@ public abstract class Produk {
 
     public double getDiskonPromo() {
         return diskonPromo;
+    }
+
+    public String getKategori() {
+        if (kategori != null && !kategori.trim().isEmpty()) {
+            return kategori;
+        }
+        return (this instanceof ProdukMakanan) ? "Makanan" : "Elektronik";
+    }
+
+    public void ubahKategori(String kategoriBaru) {
+        if (kategoriBaru == null || kategoriBaru.trim().isEmpty()) {
+            throw new IllegalArgumentException("[ERROR VALIDASI] Kategori produk tidak boleh kosong atau null!");
+        }
+        if (kategoriBaru.contains("|") || kategoriBaru.contains("\n") || kategoriBaru.contains("\r")) {
+            throw new IllegalArgumentException("[ERROR SANITASI] Kategori produk tidak boleh mengandung pemisah '|' atau baris baru!");
+        }
+        this.kategori = kategoriBaru.trim();
     }
 
     // --- BEHAVIOR METHODS DENGAN VALIDASI & EXCEPTION HANDLING TEPAT ---
