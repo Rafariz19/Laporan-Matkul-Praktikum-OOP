@@ -1,2 +1,26 @@
-MK01|Roti Bakar Keju|15000|17|Makanan|2026-12-31
-EL01|Mouse Wireless Silent|125000|9|Elektronik|12
+MK01|Roti Tawar Sari Roti|15000|25|Makanan|2026-12-31|0.10
+MK02|Donat Coklat Barokah|5000|40|Makanan|2026-12-31|0.00
+MK03|Indomie Goreng Spesial|3500|150|Makanan|2027-06-30|0.00
+MK04|Biskuit Roma Kelapa 300g|10500|30|Snack & Biskuit|2027-04-15|0.00
+MK05|Wafer Tango Cokelat 130g|8000|35|Snack & Biskuit|2027-03-20|0.10
+MK06|Chitato Sapi Panggang 68g|12000|28|Snack & Biskuit|2027-02-10|0.00
+MN01|Teh Botol Sosro 450ml|6500|60|Minuman|2027-08-15|0.00
+MN02|Ultra Milk Cokelat 250ml|7000|45|Minuman|2026-12-25|0.15
+MN03|Aqua Air Mineral 600ml|4000|100|Minuman|2027-11-20|0.00
+MN04|Pocari Sweat Botol 500ml|9000|30|Minuman|2027-05-10|0.00
+MN05|Kopi Good Day Cappuccino|8500|40|Minuman|2027-09-01|0.00
+KP01|Minyak Goreng Bimoli 2L|38500|50|Kebutuhan Pokok|2027-10-30|0.05
+KP02|Beras Premium Ramos 5kg|72000|35|Kebutuhan Pokok|2027-12-31|0.00
+KP03|Gula Pasir Gulaku 1kg|17500|60|Kebutuhan Pokok|2027-12-31|0.00
+KP04|Telur Ayam Negeri 1kg|28000|40|Kebutuhan Pokok|2026-12-05|0.00
+PD01|Sabun Mandi Lifebuoy 85g|4500|70|Perawatan Diri|2028-01-01|0.00
+PD02|Pasta Gigi Pepsodent 190g|14500|45|Perawatan Diri|2028-01-01|0.10
+PD03|Shampoo Sunsilk Black 160ml|22000|30|Perawatan Diri|2028-01-01|0.00
+EL01|Mouse Wireless Silent|125000|15|Elektronik|12|0.00
+EL02|Lampu LED Philips 10W|35000|40|Elektronik|24|0.10
+EL03|Kabel Data Type-C Robot|25000|50|Elektronik|6|0.00
+EL04|Baterai ABC Alkaline AA 2s|16500|65|Elektronik|0|0.00
+HR01|Sirup Marjan Cocopandan 460ml|22500|80|Sirup & Kue Kaleng|2027-12-31|0.15
+HR02|Khong Guan Biscuit Can 1600g|115000|25|Sirup & Kue Kaleng|2027-08-31|0.10
+HR03|Parcel Lebaran Eksklusif Berkah|250000|10|Parcel Lebaran|2027-06-30|0.20
+HR04|Kecap Manis Bango 550ml|24000|40|Bumbu & Sembako|2027-10-15|0.05

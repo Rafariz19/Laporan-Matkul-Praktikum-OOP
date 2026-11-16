@@ -145,13 +145,11 @@ public class LaporanPenjualan {
             }
         }
 
-        // Urutkan 5 produk terlaris berdasarkan total kuantitas terjual
+        // Urutkan seluruh produk terlaris berdasarkan total kuantitas terjual
         List<Map.Entry<String, int[]>> listSorted = new ArrayList<>(agregatItem.entrySet());
         listSorted.sort((a, b) -> Integer.compare(b.getValue()[0], a.getValue()[0]));
 
-        int count = 0;
         for (Map.Entry<String, int[]> e : listSorted) {
-            if (count++ >= 5) break;
             String kode = e.getKey();
             String nama = namaItemMap.getOrDefault(kode, kode);
             produkTerlarisTop5.add(new ItemTerlaris(kode, nama, e.getValue()[0], e.getValue()[1]));
@@ -164,7 +162,8 @@ public class LaporanPenjualan {
     public double getTotalDiskon() { return totalDiskon; }
     public double getTotalTunai() { return totalTunai; }
     public int getJumlahNotaVoid() { return jumlahNotaVoid; }
-    public List<ItemTerlaris> getProdukTerlarisTop5() { return Collections.unmodifiableList(produkTerlarisTop5); }
+    public List<ItemTerlaris> getDaftarProdukTerlaris() { return Collections.unmodifiableList(produkTerlarisTop5); }
+    public List<ItemTerlaris> getProdukTerlarisTop5() { return getDaftarProdukTerlaris(); }
     public List<String[]> getDaftarNotaHarian() { return Collections.unmodifiableList(daftarNotaHarian); }
     public boolean isAdaTransaksiTanpaRincian() { return adaTransaksiTanpaRincian; }
 }

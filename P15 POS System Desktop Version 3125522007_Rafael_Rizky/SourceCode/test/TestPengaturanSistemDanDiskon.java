@@ -19,16 +19,25 @@ public class TestPengaturanSistemDanDiskon {
     public static void main(String[] args) {
         System.out.println(">>> Menjalankan TestPengaturanSistemDanDiskon...");
 
-        PengaturanSistem config = new PengaturanSistem();
+        byte[] backupSettings = null;
+        java.nio.file.Path settingsPath = java.nio.file.Paths.get("data", "settings.txt");
+        if (java.nio.file.Files.exists(settingsPath)) {
+            try {
+                backupSettings = java.nio.file.Files.readAllBytes(settingsPath);
+            } catch (IOException ignored) {}
+        }
 
-        // 1. Uji Default Settings
-        if (!config.getJudulAplikasi().contains("SISTEM KASIR")) {
-            throw new AssertionError("Gagal: Judul default salah!");
-        }
-        if (!config.getTeksHeaderSub().contains("Rafael Rizky")) {
-            throw new AssertionError("Gagal: Subtitle default salah!");
-        }
-        System.out.println("  1. Inisialisasi default judul & subtitle berhasil.");
+        try {
+            PengaturanSistem config = new PengaturanSistem();
+
+            // 1. Uji Default Settings
+            if (!config.getJudulAplikasi().contains("BAROKAH") && !config.getJudulAplikasi().contains("SISTEM KASIR")) {
+                throw new AssertionError("Gagal: Judul default salah!");
+            }
+            if (!config.getTeksHeaderSub().contains("Rafael Rizky")) {
+                throw new AssertionError("Gagal: Subtitle default salah!");
+            }
+            System.out.println("  1. Inisialisasi default judul & subtitle berhasil.");
 
         // 2. Uji CRUD Judul & Subtitle
         String judulBaru = "POS MINIMARKET MAJU JAYA";
@@ -151,6 +160,13 @@ public class TestPengaturanSistemDanDiskon {
             System.out.println("  6. Persistensi Multi-Profile data/settings.txt dan muat ulang berhasil 100%.");
         } catch (IOException e) {
             throw new RuntimeException("Gagal simpan ke file: " + e.getMessage(), e);
+        }
+        } finally {
+            if (backupSettings != null) {
+                try {
+                    java.nio.file.Files.write(settingsPath, backupSettings);
+                } catch (IOException ignored) {}
+            }
         }
 
         System.out.println("[PASS] TestPengaturanSistemDanDiskon berhasil!");

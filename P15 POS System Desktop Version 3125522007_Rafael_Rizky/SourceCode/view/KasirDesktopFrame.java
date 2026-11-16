@@ -1648,7 +1648,7 @@ public class KasirDesktopFrame extends JFrame {
         muatLaporan.run();
 
         tabs.addTab("Ringkasan Finansial", new JScrollPane(txtRingkasan));
-        tabs.addTab("Top 5 Produk Terlaris", new JScrollPane(tblTop));
+        tabs.addTab("Produk Terlaris", new JScrollPane(tblTop));
         dlg.add(tabs, BorderLayout.CENTER);
 
         JPanel pnlBawah = new JPanel(new FlowLayout(FlowLayout.RIGHT));
