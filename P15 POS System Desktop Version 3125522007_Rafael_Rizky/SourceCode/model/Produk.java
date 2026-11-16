@@ -21,9 +21,11 @@ public abstract class Produk {
     private String nama;
     private int harga;
     private int stok;
+    private double diskonPromo; // Rasio diskon promo produk (0.0 s/d 1.0)
 
     /**
      * Constructor Superclass Produk dengan validasi parameter awal (Preconditions).
+     * Nilai diskon promo default diinisialisasi 0.0 (tanpa promo khusus).
      * 
      * @param kode  kode unik produk (tidak boleh null atau kosong)
      * @param nama  nama produk (tidak boleh null atau kosong)
@@ -32,6 +34,20 @@ public abstract class Produk {
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
     public Produk(String kode, String nama, int harga, int stok) {
+        this(kode, nama, harga, stok, 0.0);
+    }
+
+    /**
+     * Constructor Overloaded Superclass Produk dengan penetapan diskon promo per item.
+     * 
+     * @param kode        kode unik produk (tidak boleh null atau kosong)
+     * @param nama        nama produk (tidak boleh null atau kosong)
+     * @param harga       harga satuan produk (harus lebih besar dari 0)
+     * @param stok        jumlah stok awal produk (tidak boleh negatif)
+     * @param diskonPromo persentase rasio diskon promosi (harus di antara 0.0 dan 1.0)
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
+     */
+    public Produk(String kode, String nama, int harga, int stok, double diskonPromo) {
         if (kode == null || kode.trim().isEmpty()) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Kode produk tidak boleh null atau kosong!");
         }
@@ -50,11 +66,17 @@ public abstract class Produk {
         if (stok < 0) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Stok awal tidak boleh negatif! (Diberikan: " + stok + " unit)");
         }
+        if (diskonPromo < 0.0 || diskonPromo > 1.0) {
+            throw new IllegalArgumentException(String.format(
+                "[ERROR VALIDASI] Rasio diskon promo barang harus di antara 0.0 dan 1.0! (Diberikan: %.2f)", diskonPromo
+            ));
+        }
 
         this.kode = kode.trim();
         this.nama = nama.trim();
         this.harga = harga;
         this.stok = stok;
+        this.diskonPromo = diskonPromo;
     }
 
     // --- GETTER METHODS ---
@@ -75,7 +97,26 @@ public abstract class Produk {
         return stok;
     }
 
+    public double getDiskonPromo() {
+        return diskonPromo;
+    }
+
     // --- BEHAVIOR METHODS DENGAN VALIDASI & EXCEPTION HANDLING TEPAT ---
+
+    /**
+     * Mengubah besaran diskon promo barang dengan validasi rasio 0.0 s/d 1.0 (0% s/d 100%).
+     * 
+     * @param diskonPromoBaru persentase rasio promo baru
+     * @throws IllegalArgumentException jika diskonPromoBaru < 0.0 atau > 1.0
+     */
+    public void ubahDiskonPromo(double diskonPromoBaru) {
+        if (diskonPromoBaru < 0.0 || diskonPromoBaru > 1.0) {
+            throw new IllegalArgumentException(String.format(
+                "[ERROR VALIDASI] Rasio diskon promo barang harus di antara 0.0 dan 1.0! (Ditolak: %.2f)", diskonPromoBaru
+            ));
+        }
+        this.diskonPromo = diskonPromoBaru;
+    }
 
     /**
      * Mengubah nama produk dengan validasi input string.
@@ -194,6 +235,9 @@ public abstract class Produk {
         System.out.println("Harga       : Rp " + String.format("%,d", getHarga()).replace(',', '.'));
         System.out.println("Stok        : " + getStok() + " unit");
         System.out.println("Inventaris  : Rp " + String.format("%,d", hitungNilaiInventaris()).replace(',', '.'));
+        if (getDiskonPromo() > 0.0) {
+            System.out.println("Diskon Promo: " + String.format(java.util.Locale.US, "%.0f%%", getDiskonPromo() * 100));
+        }
         tampilkanDetailKhusus();
         System.out.println("--------------------------------------------------");
     }

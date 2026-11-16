@@ -31,7 +31,7 @@ public class ProdukMakanan extends Produk implements DapatDidiskon {
     private static final DateTimeFormatter FORMAT_ID = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     /**
-     * Constructor ProdukMakanan.
+     * Constructor ProdukMakanan standar tanpa promo khusus (diskonPromo = 0.0).
      * 
      * @param kode              kode barang makanan
      * @param nama              nama barang makanan
@@ -41,7 +41,22 @@ public class ProdukMakanan extends Produk implements DapatDidiskon {
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
     public ProdukMakanan(String kode, String nama, int harga, int stok, String tanggalKadaluarsa) {
-        super(kode, nama, harga, stok);
+        this(kode, nama, harga, stok, tanggalKadaluarsa, 0.0);
+    }
+
+    /**
+     * Constructor Overloaded ProdukMakanan dengan diskon promo barang.
+     * 
+     * @param kode              kode barang makanan
+     * @param nama              nama barang makanan
+     * @param harga             harga satuan makanan (> 0)
+     * @param stok              jumlah stok makanan (>= 0)
+     * @param tanggalKadaluarsa tanggal masa berlaku kadaluarsa (format: yyyy-MM-dd atau dd-MM-yyyy)
+     * @param diskonPromo       rasio diskon promosi barang (0.0 s/d 1.0)
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
+     */
+    public ProdukMakanan(String kode, String nama, int harga, int stok, String tanggalKadaluarsa, double diskonPromo) {
+        super(kode, nama, harga, stok, diskonPromo);
         this.tanggalKadaluarsaDate = parseTanggal(tanggalKadaluarsa);
     }
 

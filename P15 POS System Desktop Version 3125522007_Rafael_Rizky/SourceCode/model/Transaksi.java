@@ -107,13 +107,15 @@ public class Transaksi {
      * - Terapkan diskon dinamis mendekati kadaluarsa otomatis ke baris item belanja.
      */
     public void tambahItem(Produk produk, int jumlahBeli, Clock clock) throws KasirException {
-        double diskonPromo = 0.0;
+        double diskonPromo = (produk != null) ? produk.getDiskonPromo() : 0.0;
         if (produk instanceof ProdukMakanan) {
             ProdukMakanan pm = (ProdukMakanan) produk;
             if (pm.isKadaluarsa(clock)) {
                 throw new ProdukKadaluarsaException(pm.getKode(), pm.getNama(), pm.getTanggalKadaluarsa());
             }
-            diskonPromo = pm.hitungDiskonKedaluwarsa(clock);
+            double diskonExp = pm.hitungDiskonKedaluwarsa(clock);
+            // Sinergi Diskon: Memilih diskon tertinggi antara diskon promo manual vs diskon kedaluwarsa
+            diskonPromo = Math.max(diskonPromo, diskonExp);
         }
         tambahItem(produk, jumlahBeli, diskonPromo);
     }

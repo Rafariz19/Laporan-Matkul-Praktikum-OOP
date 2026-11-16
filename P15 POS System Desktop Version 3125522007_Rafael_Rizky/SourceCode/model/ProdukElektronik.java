@@ -14,7 +14,7 @@ public class ProdukElektronik extends Produk implements DapatDidiskon {
     private int garansiBulan;
 
     /**
-     * Constructor ProdukElektronik.
+     * Constructor ProdukElektronik standar tanpa promo khusus (diskonPromo = 0.0).
      * 
      * @param kode         kode barang elektronik
      * @param nama         nama barang elektronik
@@ -24,7 +24,22 @@ public class ProdukElektronik extends Produk implements DapatDidiskon {
      * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
      */
     public ProdukElektronik(String kode, String nama, int harga, int stok, int garansiBulan) {
-        super(kode, nama, harga, stok);
+        this(kode, nama, harga, stok, garansiBulan, 0.0);
+    }
+
+    /**
+     * Constructor Overloaded ProdukElektronik dengan diskon promo barang.
+     * 
+     * @param kode         kode barang elektronik
+     * @param nama         nama barang elektronik
+     * @param harga        harga satuan barang (> 0)
+     * @param stok         jumlah stok awal (>= 0)
+     * @param garansiBulan durasi garansi resmi dalam satuan bulan (harus >= 0)
+     * @param diskonPromo  rasio diskon promosi barang (0.0 s/d 1.0)
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
+     */
+    public ProdukElektronik(String kode, String nama, int harga, int stok, int garansiBulan, double diskonPromo) {
+        super(kode, nama, harga, stok, diskonPromo);
         if (garansiBulan < 0) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Durasi garansi tidak boleh negatif! (Diberikan: " + garansiBulan + " bulan)");
         }

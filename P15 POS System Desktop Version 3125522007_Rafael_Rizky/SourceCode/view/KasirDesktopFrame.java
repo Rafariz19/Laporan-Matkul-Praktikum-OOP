@@ -595,6 +595,9 @@ public class KasirDesktopFrame extends JFrame {
             } else if (p instanceof ProdukElektronik) {
                 infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
             }
+            if (p.getDiskonPromo() > 0.0) {
+                infoKhusus += String.format(java.util.Locale.US, " [PROMO %.0f%%]", p.getDiskonPromo() * 100);
+            }
             String labelStok = String.valueOf(p.getStok());
             if (p.isStokMenipis()) {
                 labelStok = p.getStok() + " [MENIPIS]";
@@ -626,6 +629,9 @@ public class KasirDesktopFrame extends JFrame {
                 }
             } else if (p instanceof ProdukElektronik) {
                 infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
+            }
+            if (p.getDiskonPromo() > 0.0) {
+                infoKhusus += String.format(java.util.Locale.US, " [PROMO %.0f%%]", p.getDiskonPromo() * 100);
             }
             String labelStok = String.valueOf(p.getStok());
             if (p.isStokMenipis()) {
@@ -964,9 +970,9 @@ public class KasirDesktopFrame extends JFrame {
         }
 
         JDialog dlg = new JDialog(this, "Edit Data Produk - " + p.getKode(), true);
-        dlg.setSize(420, 350);
+        dlg.setSize(440, 390);
         dlg.setLocationRelativeTo(this);
-        dlg.setLayout(new GridLayout(6, 2, 8, 8));
+        dlg.setLayout(new GridLayout(7, 2, 8, 8));
         dlg.getRootPane().setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         JTextField txtKode = new JTextField(p.getKode());
@@ -979,6 +985,7 @@ public class KasirDesktopFrame extends JFrame {
         JTextField txtNama = new JTextField(p.getNama());
         JTextField txtHarga = new JTextField(String.valueOf(p.getHarga()));
         JTextField txtStok = new JTextField(String.valueOf(p.getStok()));
+        JTextField txtDiskonPromo = new JTextField(String.format(java.util.Locale.US, "%.0f", p.getDiskonPromo() * 100));
 
         if (sedangDiKeranjang) {
             txtStok.setEditable(false);
@@ -1005,6 +1012,8 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(txtHarga);
         dlg.add(new JLabel("Stok Tersedia:"));
         dlg.add(txtStok);
+        dlg.add(new JLabel("Diskon Promo Barang (%):"));
+        dlg.add(txtDiskonPromo);
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
@@ -1019,8 +1028,13 @@ public class KasirDesktopFrame extends JFrame {
                 int stokBaru = Integer.parseInt(txtStok.getText().trim());
                 String namaBaru = txtNama.getText().trim();
                 String extraBaru = txtExtra.getText().trim();
+                double diskonPersen = Double.parseDouble(txtDiskonPromo.getText().trim());
+                if (diskonPersen < 0.0 || diskonPersen > 100.0) {
+                    throw new IllegalArgumentException("[ERROR VALIDASI] Diskon promo harus di antara 0% dan 100%!");
+                }
+                double diskonPromoBaru = diskonPersen / 100.0;
 
-                katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru);
+                katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru, diskonPromoBaru);
                 simpanKatalogAmanKeFile(PATH_PRODUK);
 
                 muatTabelKatalog();
@@ -1044,9 +1058,9 @@ public class KasirDesktopFrame extends JFrame {
         }
 
         JDialog dlg = new JDialog(this, "Registrasi Komoditas Produk Baru", true);
-        dlg.setSize(440, 380);
+        dlg.setSize(440, 420);
         dlg.setLocationRelativeTo(this);
-        dlg.setLayout(new GridLayout(7, 2, 8, 8));
+        dlg.setLayout(new GridLayout(8, 2, 8, 8));
         dlg.getRootPane().setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         JComboBox<String> cmbJenis = new JComboBox<>(new String[]{"Makanan & Minuman", "Elektronik & Gadget"});
@@ -1054,6 +1068,7 @@ public class KasirDesktopFrame extends JFrame {
         JTextField txtNama = new JTextField();
         JTextField txtHarga = new JTextField();
         JTextField txtStok = new JTextField();
+        JTextField txtDiskonPromo = new JTextField("0");
         JLabel lblExtra = new JLabel("Tgl Kadaluarsa (yyyy-MM-dd):");
         JTextField txtExtra = new JTextField("2026-12-31");
 
@@ -1077,6 +1092,8 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(txtHarga);
         dlg.add(new JLabel("Stok Awal Inventaris:"));
         dlg.add(txtStok);
+        dlg.add(new JLabel("Diskon Promo Barang (%):"));
+        dlg.add(txtDiskonPromo);
         dlg.add(lblExtra);
         dlg.add(txtExtra);
 
@@ -1092,13 +1109,18 @@ public class KasirDesktopFrame extends JFrame {
                 int harga = Integer.parseInt(txtHarga.getText().trim());
                 int stok = Integer.parseInt(txtStok.getText().trim());
                 String extra = txtExtra.getText().trim();
+                double diskonPersen = Double.parseDouble(txtDiskonPromo.getText().trim());
+                if (diskonPersen < 0.0 || diskonPersen > 100.0) {
+                    throw new IllegalArgumentException("[ERROR VALIDASI] Diskon promo harus di antara 0% dan 100%!");
+                }
+                double diskonPromo = diskonPersen / 100.0;
 
                 Produk p;
                 if (cmbJenis.getSelectedIndex() == 0) {
-                    p = new ProdukMakanan(kode, nama, harga, stok, extra);
+                    p = new ProdukMakanan(kode, nama, harga, stok, extra, diskonPromo);
                 } else {
                     int garansi = Integer.parseInt(extra);
-                    p = new ProdukElektronik(kode, nama, harga, stok, garansi);
+                    p = new ProdukElektronik(kode, nama, harga, stok, garansi, diskonPromo);
                 }
 
                 katalog.tambahProduk(p);

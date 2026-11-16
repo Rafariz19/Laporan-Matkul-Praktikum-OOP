@@ -72,9 +72,8 @@ public class KatalogProduk {
     }
 
     /**
-     * Memperbarui / mengedit atribut data produk yang sudah terdaftar di katalog.
-     * Menerapkan prinsip Atomic Invariant: Validasi menyeluruh dilakukan SEBELUM mutasi state.
-     * Jika terjadi kegagalan validasi, state objek lama dijamin 100% tidak berubah.
+     * Memperbarui / mengedit atribut data produk yang sudah terdaftar di katalog
+     * dengan mempertahankan nilai diskon promo yang sudah ada.
      * 
      * @param kode       kode produk yang akan diedit (sebagai kunci identitas unik)
      * @param namaBaru   nama baru produk
@@ -89,6 +88,28 @@ public class KatalogProduk {
         if (p == null) {
             return false;
         }
+        return ubahProduk(kode, namaBaru, hargaBaru, stokBaru, extraBaru, p.getDiskonPromo());
+    }
+
+    /**
+     * Memperbarui / mengedit atribut data produk lengkap termasuk rasio diskon promosi barang.
+     * Menerapkan prinsip Atomic Invariant: Validasi menyeluruh dilakukan SEBELUM mutasi state.
+     * Jika terjadi kegagalan validasi, state objek lama dijamin 100% tidak berubah.
+     * 
+     * @param kode             kode produk yang akan diedit
+     * @param namaBaru         nama baru produk
+     * @param hargaBaru        harga satuan baru produk
+     * @param stokBaru         jumlah stok baru produk
+     * @param extraBaru        info khusus (tanggal kadaluarsa untuk makanan, garansi untuk elektronik)
+     * @param diskonPromoBaru  rasio promo barang baru (0.0 s/d 1.0)
+     * @return true jika produk berhasil diperbarui, false jika kode tidak ditemukan
+     * @throws IllegalArgumentException jika parameter melanggar invariant bisnis
+     */
+    public boolean ubahProduk(String kode, String namaBaru, int hargaBaru, int stokBaru, String extraBaru, double diskonPromoBaru) {
+        Produk p = cariProduk(kode);
+        if (p == null) {
+            return false;
+        }
 
         // --- PRE-VALIDASI KETAT (ATOMIC INVARIANCE MODUL 10 & 11) ---
         if (namaBaru == null || namaBaru.trim().isEmpty()) {
@@ -99,6 +120,11 @@ public class KatalogProduk {
         }
         if (stokBaru < 0) {
             throw new IllegalArgumentException("[ERROR VALIDASI] Stok produk tidak boleh negatif! (Diberikan: " + stokBaru + " unit)");
+        }
+        if (diskonPromoBaru < 0.0 || diskonPromoBaru > 1.0) {
+            throw new IllegalArgumentException(String.format(
+                "[ERROR VALIDASI] Rasio diskon promo barang harus di antara 0.0 dan 1.0! (Diberikan: %.2f)", diskonPromoBaru
+            ));
         }
 
         int parsedGaransi = 0;
@@ -124,6 +150,7 @@ public class KatalogProduk {
         p.ubahNama(namaBaru);
         p.ubahHarga(hargaBaru);
         p.ubahStok(stokBaru);
+        p.ubahDiskonPromo(diskonPromoBaru);
 
         if (p instanceof ProdukMakanan) {
             ((ProdukMakanan) p).ubahTanggalKadaluarsa(extraBaru.trim());
@@ -178,6 +205,9 @@ public class KatalogProduk {
                     infoKhusus = "Exp: " + ((ProdukMakanan) p).getTanggalKadaluarsa();
                 } else if (p instanceof ProdukElektronik) {
                     infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " Bln";
+                }
+                if (p.getDiskonPromo() > 0.0) {
+                    infoKhusus += String.format(java.util.Locale.US, " [PROMO %.0f%%]", p.getDiskonPromo() * 100);
                 }
                 System.out.printf("| %-6s | %-26s | %-12s | Rp %,11d | %-6d | %-20s |\n",
                         p.getKode(),
@@ -265,11 +295,11 @@ public class KatalogProduk {
             int stokEfektif = p.getStok() + extra;
             if (p instanceof ProdukMakanan) {
                 snapshot.tambahProduk(new ProdukMakanan(
-                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukMakanan) p).getTanggalKadaluarsa()
+                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukMakanan) p).getTanggalKadaluarsa(), p.getDiskonPromo()
                 ));
             } else if (p instanceof ProdukElektronik) {
                 snapshot.tambahProduk(new ProdukElektronik(
-                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukElektronik) p).getGaransiBulan()
+                    p.getKode(), p.getNama(), p.getHarga(), stokEfektif, ((ProdukElektronik) p).getGaransiBulan(), p.getDiskonPromo()
                 ));
             }
         }

@@ -52,9 +52,12 @@ public class RunAllTests {
         // Uji Fase 4 (Settings & CRUD Diskon)
         TestPengaturanSistemDanDiskon.main(new String[0]);
 
+        // Uji Fase 5 (Promo Barang Tertentu)
+        TestPromoBarangTertentu.run();
+
         long durasi = System.currentTimeMillis() - start;
         System.out.println("======================================================================");
-        System.out.println("   HASIL AKHIR: 15/15 PENGUJIAN LULUS DENGAN SUKSES (100% PASS)       ");
+        System.out.println("   HASIL AKHIR: 16/16 PENGUJIAN LULUS DENGAN SUKSES (100% PASS)       ");
         System.out.println("   Total Durasi Pengujian: " + durasi + " ms                          ");
         System.out.println("======================================================================");
     }

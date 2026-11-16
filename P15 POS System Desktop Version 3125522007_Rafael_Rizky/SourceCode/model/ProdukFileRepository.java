@@ -46,14 +46,16 @@ public class ProdukFileRepository {
                 extra = String.valueOf(((ProdukElektronik) p).getGaransiBulan());
             }
 
+            String diskonStr = String.format(java.util.Locale.US, "%.2f", p.getDiskonPromo());
+
             // Sanitasi karakter pemisah terlarang
-            for (String nilai : new String[]{kode, nama, harga, stok, kategori, extra}) {
+            for (String nilai : new String[]{kode, nama, harga, stok, kategori, extra, diskonStr}) {
                 if (nilai.contains("|") || nilai.contains("\n") || nilai.contains("\r")) {
                     throw new IllegalArgumentException("[ERROR SANITASI] Data produk mengandung karakter terlarang ('|', '\\n', '\\r'): " + nilai);
                 }
             }
 
-            barisList.add(kode + "|" + nama + "|" + harga + "|" + stok + "|" + kategori + "|" + extra);
+            barisList.add(kode + "|" + nama + "|" + harga + "|" + stok + "|" + kategori + "|" + extra + "|" + diskonStr);
         }
 
         // Tulis ke disk secara crash-safe atomic write dengan auto-backup
@@ -102,8 +104,8 @@ public class ProdukFileRepository {
             }
 
             String[] kolom = satuBaris.split("\\|", -1);
-            if (kolom.length != 6) {
-                throw new IllegalArgumentException("[ERROR FORMAT] Baris ke-" + nomorBaris + " tidak valid (harus 6 kolom): '" + satuBaris + "'");
+            if (kolom.length < 6 || kolom.length > 7) {
+                throw new IllegalArgumentException("[ERROR FORMAT] Baris ke-" + nomorBaris + " tidak valid (harus 6 atau 7 kolom): '" + satuBaris + "'");
             }
 
             String kode = kolom[0].trim();
@@ -112,6 +114,17 @@ public class ProdukFileRepository {
             String strStok = kolom[3].trim();
             String kategori = kolom[4].trim();
             String extra = kolom[5].trim();
+            double diskonPromo = 0.0;
+            if (kolom.length == 7 && !kolom[6].trim().isEmpty()) {
+                try {
+                    diskonPromo = Double.parseDouble(kolom[6].trim());
+                    if (diskonPromo < 0.0 || diskonPromo > 1.0) {
+                        throw new IllegalArgumentException("[ERROR DISKON] Baris ke-" + nomorBaris + " diskon promo harus antara 0.0 dan 1.0 (Diberikan: " + diskonPromo + ")");
+                    }
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("[ERROR PARSING] Baris ke-" + nomorBaris + " diskon promo bukan bilangan numerik desimal: " + kolom[6]);
+                }
+            }
 
             int harga;
             int stok;
@@ -131,7 +144,7 @@ public class ProdukFileRepository {
 
             // Rekonstruksi objek polimorfis
             if (kategori.equalsIgnoreCase("Makanan")) {
-                dataBaru.add(new ProdukMakanan(kode, nama, harga, stok, extra));
+                dataBaru.add(new ProdukMakanan(kode, nama, harga, stok, extra, diskonPromo));
             } else if (kategori.equalsIgnoreCase("Elektronik")) {
                 int garansi;
                 try {
@@ -139,7 +152,7 @@ public class ProdukFileRepository {
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("[ERROR GARANSI] Baris ke-" + nomorBaris + " garansi bulan harus angka: " + extra);
                 }
-                dataBaru.add(new ProdukElektronik(kode, nama, harga, stok, garansi));
+                dataBaru.add(new ProdukElektronik(kode, nama, harga, stok, garansi, diskonPromo));
             } else {
                 throw new IllegalArgumentException("[ERROR KATEGORI] Baris ke-" + nomorBaris + " kategori '" + kategori + "' tidak dikenali.");
             }
