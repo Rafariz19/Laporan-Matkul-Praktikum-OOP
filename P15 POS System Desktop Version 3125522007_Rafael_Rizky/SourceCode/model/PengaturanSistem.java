@@ -44,7 +44,7 @@ public class PengaturanSistem {
     public PengaturanSistem() {
         this.namaProfilAktif = "Settingan 1";
         this.judulAplikasi = "MINIMARKET BAROKAH CABANG SUMENEP";
-        this.teksHeaderSub = "Kasir & Admin: Rafael Rizky (NRP: 3125522007) | PENS PSDKU Sumenep";
+        this.teksHeaderSub = "Kasir: Rafael Rizky";
         this.warnaHeader = new Color(0x1D, 0x1D, 0x1F);   // Apple Space Black (#1D1D1F)
         this.warnaAksen = new Color(0x00, 0x7A, 0xFF);    // Apple Vibrant Blue (#007AFF)
         this.daftarDiskonMember = new LinkedHashMap<>();
