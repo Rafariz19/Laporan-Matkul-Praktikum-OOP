@@ -60,9 +60,10 @@ public class DialogKalender extends JDialog {
         pnlTop.setBackground(TemaWarna.APPLE_CANVAS);
         pnlTop.setBorder(BorderFactory.createEmptyBorder(8, 10, 5, 10));
 
-        ModernButton btnPrev = new ModernButton("◀", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
+        ModernButton btnPrev = new ModernButton("<", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnPrev.setPreferredSize(new Dimension(38, 28));
-        btnPrev.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnPrev.setMargin(new Insets(0, 0, 0, 0));
+        btnPrev.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnPrev.addActionListener(e -> {
             bulanAktif--;
             if (bulanAktif < 1) {
@@ -73,9 +74,10 @@ public class DialogKalender extends JDialog {
             renderGridHari();
         });
 
-        ModernButton btnNext = new ModernButton("▶", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
+        ModernButton btnNext = new ModernButton(">", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnNext.setPreferredSize(new Dimension(38, 28));
-        btnNext.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnNext.setMargin(new Insets(0, 0, 0, 0));
+        btnNext.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnNext.addActionListener(e -> {
             bulanAktif++;
             if (bulanAktif > 12) {
