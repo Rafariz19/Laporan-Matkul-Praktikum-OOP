@@ -1028,11 +1028,17 @@ public class KasirDesktopFrame extends JFrame {
                 int stokBaru = Integer.parseInt(txtStok.getText().trim());
                 String namaBaru = txtNama.getText().trim();
                 String extraBaru = txtExtra.getText().trim();
-                double diskonPersen = Double.parseDouble(txtDiskonPromo.getText().trim());
-                if (diskonPersen < 0.0 || diskonPersen > 100.0) {
-                    throw new IllegalArgumentException("[ERROR VALIDASI] Diskon promo harus di antara 0% dan 100%!");
+                String rawDiskon = txtDiskonPromo.getText().trim().replace("%", "").replace(",", ".");
+                double valDiskon = Double.parseDouble(rawDiskon);
+                double diskonPromoBaru;
+                if (rawDiskon.startsWith("0.") && valDiskon > 0.0 && valDiskon < 1.0) {
+                    diskonPromoBaru = valDiskon;
+                } else {
+                    if (valDiskon < 0.0 || valDiskon > 100.0) {
+                        throw new IllegalArgumentException("[ERROR VALIDASI] Diskon promo harus di antara 0% dan 100%!");
+                    }
+                    diskonPromoBaru = valDiskon / 100.0;
                 }
-                double diskonPromoBaru = diskonPersen / 100.0;
 
                 katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru, diskonPromoBaru);
                 simpanKatalogAmanKeFile(PATH_PRODUK);
@@ -1109,11 +1115,17 @@ public class KasirDesktopFrame extends JFrame {
                 int harga = Integer.parseInt(txtHarga.getText().trim());
                 int stok = Integer.parseInt(txtStok.getText().trim());
                 String extra = txtExtra.getText().trim();
-                double diskonPersen = Double.parseDouble(txtDiskonPromo.getText().trim());
-                if (diskonPersen < 0.0 || diskonPersen > 100.0) {
-                    throw new IllegalArgumentException("[ERROR VALIDASI] Diskon promo harus di antara 0% dan 100%!");
+                String rawDiskon = txtDiskonPromo.getText().trim().replace("%", "").replace(",", ".");
+                double valDiskon = Double.parseDouble(rawDiskon);
+                double diskonPromo;
+                if (rawDiskon.startsWith("0.") && valDiskon > 0.0 && valDiskon < 1.0) {
+                    diskonPromo = valDiskon;
+                } else {
+                    if (valDiskon < 0.0 || valDiskon > 100.0) {
+                        throw new IllegalArgumentException("[ERROR VALIDASI] Diskon promo harus di antara 0% dan 100%!");
+                    }
+                    diskonPromo = valDiskon / 100.0;
                 }
-                double diskonPromo = diskonPersen / 100.0;
 
                 Produk p;
                 if (cmbJenis.getSelectedIndex() == 0) {
