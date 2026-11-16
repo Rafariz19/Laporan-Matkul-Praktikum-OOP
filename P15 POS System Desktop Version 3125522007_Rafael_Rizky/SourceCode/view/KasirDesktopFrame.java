@@ -10,6 +10,7 @@ import java.awt.event.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -1287,14 +1288,24 @@ public class KasirDesktopFrame extends JFrame {
         }
 
         JLabel lblExtra;
-        JTextField txtExtra;
+        JComponent compExtra;
+        KalenderDatePicker pickerKadaluarsa = null;
+        JTextField txtGaransi = null;
 
         if (p instanceof ProdukMakanan) {
-            lblExtra = new JLabel("Tgl Kadaluarsa (yyyy-MM-dd):");
-            txtExtra = new JTextField(((ProdukMakanan) p).getTanggalKadaluarsa());
+            lblExtra = new JLabel("Tgl Kadaluarsa:");
+            LocalDate tglAwal;
+            try {
+                tglAwal = LocalDate.parse(((ProdukMakanan) p).getTanggalKadaluarsa());
+            } catch (Exception ex) {
+                tglAwal = LocalDate.now().plusMonths(6);
+            }
+            pickerKadaluarsa = new KalenderDatePicker(dlg, "yyyy-MM-dd", tglAwal);
+            compExtra = pickerKadaluarsa;
         } else {
             lblExtra = new JLabel("Garansi Resmi (Bulan):");
-            txtExtra = new JTextField(String.valueOf(((ProdukElektronik) p).getGaransiBulan()));
+            txtGaransi = new JTextField(String.valueOf(((ProdukElektronik) p).getGaransiBulan()));
+            compExtra = txtGaransi;
         }
 
         dlg.add(new JLabel("Kode Produk:"));
@@ -1310,11 +1321,14 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(new JLabel("Diskon Promo Barang (%):"));
         dlg.add(txtDiskonPromo);
         dlg.add(lblExtra);
-        dlg.add(txtExtra);
+        dlg.add(compExtra);
 
         ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnBatal.addActionListener(e -> dlg.dispose());
         dlg.add(btnBatal);
+
+        final KalenderDatePicker finalPicker = pickerKadaluarsa;
+        final JTextField finalTxtGaransi = txtGaransi;
 
         ModernButton btnSimpan = new ModernButton("Simpan Perubahan", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
         btnSimpan.addActionListener(e -> {
@@ -1322,7 +1336,7 @@ public class KasirDesktopFrame extends JFrame {
                 int hargaBaru = Integer.parseInt(txtHarga.getText().trim());
                 int stokBaru = Integer.parseInt(txtStok.getText().trim());
                 String namaBaru = txtNama.getText().trim();
-                String extraBaru = txtExtra.getText().trim();
+                String extraBaru = (finalPicker != null) ? finalPicker.getText() : finalTxtGaransi.getText().trim();
                 String rawDiskon = txtDiskonPromo.getText().trim().replace("%", "").replace(",", ".");
                 double valDiskon = Double.parseDouble(rawDiskon);
                 double diskonPromoBaru;
@@ -1389,19 +1403,26 @@ public class KasirDesktopFrame extends JFrame {
         JTextField txtHarga = new JTextField();
         JTextField txtStok = new JTextField();
         JTextField txtDiskonPromo = new JTextField("0");
-        JLabel lblExtra = new JLabel("Tgl Kadaluarsa (yyyy-MM-dd):");
-        JTextField txtExtra = new JTextField("2026-12-31");
+        JLabel lblExtra = new JLabel("Tgl Kadaluarsa:");
+        KalenderDatePicker pickerKadaluarsa = new KalenderDatePicker(dlg, "yyyy-MM-dd", LocalDate.of(2026, 12, 31));
+        JTextField txtGaransi = new JTextField("12");
+
+        CardLayout cardExtra = new CardLayout();
+        JPanel pnlExtraContainer = new JPanel(cardExtra);
+        pnlExtraContainer.add(pickerKadaluarsa, "MAKANAN");
+        pnlExtraContainer.add(txtGaransi, "ELEKTRONIK");
+        cardExtra.show(pnlExtraContainer, "MAKANAN");
 
         cmbJenis.addActionListener(e -> {
             if (cmbJenis.getSelectedIndex() == 0) {
-                lblExtra.setText("Tgl Kadaluarsa (yyyy-MM-dd):");
-                txtExtra.setText("2026-12-31");
+                lblExtra.setText("Tgl Kadaluarsa:");
+                cardExtra.show(pnlExtraContainer, "MAKANAN");
                 if ("Elektronik".equalsIgnoreCase((String) cmbKategori.getSelectedItem())) {
                     cmbKategori.setSelectedItem("Makanan");
                 }
             } else {
                 lblExtra.setText("Garansi Resmi (Bulan):");
-                txtExtra.setText("12");
+                cardExtra.show(pnlExtraContainer, "ELEKTRONIK");
                 if ("Makanan".equalsIgnoreCase((String) cmbKategori.getSelectedItem()) || "Minuman".equalsIgnoreCase((String) cmbKategori.getSelectedItem())) {
                     cmbKategori.setSelectedItem("Elektronik");
                 }
@@ -1423,7 +1444,7 @@ public class KasirDesktopFrame extends JFrame {
         dlg.add(new JLabel("Diskon Promo Barang (%):"));
         dlg.add(txtDiskonPromo);
         dlg.add(lblExtra);
-        dlg.add(txtExtra);
+        dlg.add(pnlExtraContainer);
 
         ModernButton btnBatal = new ModernButton("Batal", TemaWarna.TOMBOL_NETRAL, TemaWarna.TEKS_TOMBOL_NETRAL);
         btnBatal.addActionListener(e -> dlg.dispose());
@@ -1436,7 +1457,7 @@ public class KasirDesktopFrame extends JFrame {
                 String nama = txtNama.getText().trim();
                 int harga = Integer.parseInt(txtHarga.getText().trim());
                 int stok = Integer.parseInt(txtStok.getText().trim());
-                String extra = txtExtra.getText().trim();
+                String extra = (cmbJenis.getSelectedIndex() == 0) ? pickerKadaluarsa.getText() : txtGaransi.getText().trim();
                 String rawDiskon = txtDiskonPromo.getText().trim().replace("%", "").replace(",", ".");
                 double valDiskon = Double.parseDouble(rawDiskon);
                 double diskonPromo;
@@ -1547,12 +1568,11 @@ public class KasirDesktopFrame extends JFrame {
         dlg.setLayout(new BorderLayout(10, 10));
 
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        String tglDefault = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-        JTextField txtTgl = new JTextField(tglDefault, 10);
+        KalenderDatePicker pickerLaporan = new KalenderDatePicker(dlg, "dd-MM-yyyy", LocalDate.now());
         ModernButton btnFilter = new ModernButton("Tampilkan Laporan", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
 
-        topBar.add(new JLabel("Pilih Tanggal Transaksi (DD-MM-YYYY):"));
-        topBar.add(txtTgl);
+        topBar.add(new JLabel("Pilih Tanggal Transaksi:"));
+        topBar.add(pickerLaporan);
         topBar.add(btnFilter);
         dlg.add(topBar, BorderLayout.NORTH);
 
@@ -1571,7 +1591,7 @@ public class KasirDesktopFrame extends JFrame {
 
         Runnable muatLaporan = () -> {
             try {
-                LaporanPenjualan lap = LaporanPenjualan.buatLaporan(PATH_TRANSAKSI, PATH_TRANSAKSI_ITEM, txtTgl.getText().trim());
+                LaporanPenjualan lap = LaporanPenjualan.buatLaporan(PATH_TRANSAKSI, PATH_TRANSAKSI_ITEM, pickerLaporan.getText());
                 StringBuilder sb = new StringBuilder();
                 sb.append("===================================================================\n");
                 sb.append("                 RINGKASAN LAPORAN PENJUALAN HARIAN                \n");
