@@ -1,6 +1,7 @@
 package view;
 
 import model.AuthService;
+import model.KatalogProduk;
 import model.PengaturanSistem;
 import model.ProfilPengaturan;
 import model.User;
@@ -11,6 +12,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -46,6 +48,10 @@ public class DialogPengaturan extends JDialog {
     private DefaultTableModel modelDiskon;
     private JTable tabelDiskon;
     private final transient Map<String, Double> localDiskonMap;
+
+    // Komponen Form Manajemen Kategori
+    private DefaultTableModel modelTabelKategori;
+    private JTable tabelKategoriAdmin;
 
     private ModernButton btnSimpanSemua;
 
@@ -249,6 +255,52 @@ public class DialogPengaturan extends JDialog {
         pnlDiskon.add(pnlActionDiskon, BorderLayout.SOUTH);
 
         tabbedPane.addTab("🏷️ CRUD Skema Diskon Member", pnlDiskon);
+
+        // TAB 3: CRUD MANAJEMEN KATEGORI PRODUK
+        JPanel pnlKategori = new JPanel(new BorderLayout(8, 8));
+        pnlKategori.setBackground(TemaWarna.APPLE_CANVAS);
+        pnlKategori.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        String[] colKategori = {"No.", "Nama Kategori", "Jumlah Produk Terdaftar", "Tipe Kategori"};
+        modelTabelKategori = new DefaultTableModel(colKategori, 0) {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        tabelKategoriAdmin = new JTable(modelTabelKategori);
+        tabelKategoriAdmin.setRowHeight(25);
+        tabelKategoriAdmin.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tabelKategoriAdmin.getTableHeader().setPreferredSize(new Dimension(0, 32));
+        tabelKategoriAdmin.getTableHeader().setDefaultRenderer(new ModernTableHeaderRenderer());
+        tabelKategoriAdmin.setGridColor(TemaWarna.BORDER_DIVIDER);
+        tabelKategoriAdmin.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        tabelKategoriAdmin.getColumnModel().getColumn(0).setPreferredWidth(45);
+        tabelKategoriAdmin.getColumnModel().getColumn(0).setMaxWidth(60);
+        tabelKategoriAdmin.getColumnModel().getColumn(1).setPreferredWidth(180);
+        tabelKategoriAdmin.getColumnModel().getColumn(2).setPreferredWidth(140);
+        tabelKategoriAdmin.getColumnModel().getColumn(3).setPreferredWidth(130);
+
+        muatDataTabelKategori();
+
+        pnlKategori.add(new JScrollPane(tabelKategoriAdmin), BorderLayout.CENTER);
+
+        JPanel pnlActionKategori = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
+        pnlActionKategori.setBackground(TemaWarna.APPLE_CANVAS);
+        ModernButton btnTambahKat = new ModernButton("+ Tambah Kategori", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnEditKat = new ModernButton("Edit Kategori", TemaWarna.TOMBOL_UTAMA, TemaWarna.TEKS_PUTIH);
+        ModernButton btnHapusKat = new ModernButton("Hapus Kategori", TemaWarna.TOMBOL_BATAL, TemaWarna.TEKS_PUTIH);
+
+        btnTambahKat.addActionListener(e -> aksiTambahKategori());
+        btnEditKat.addActionListener(e -> aksiEditKategori());
+        btnHapusKat.addActionListener(e -> aksiHapusKategori());
+
+        pnlActionKategori.add(btnTambahKat);
+        pnlActionKategori.add(btnEditKat);
+        pnlActionKategori.add(btnHapusKat);
+        pnlKategori.add(pnlActionKategori, BorderLayout.SOUTH);
+
+        tabbedPane.addTab("📁 CRUD Manajemen Kategori", pnlKategori);
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -512,6 +564,157 @@ public class DialogPengaturan extends JDialog {
             JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas konfigurasi: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // --- LOGIKA AKSI CRUD KATEGORI PRODUK ---
+
+    private void muatDataTabelKategori() {
+        if (modelTabelKategori == null) return;
+        modelTabelKategori.setRowCount(0);
+        List<String> daftar = config.getDaftarKategori();
+        KatalogProduk kat = (parentFrame != null) ? parentFrame.getKatalog() : null;
+
+        int no = 1;
+        for (String k : daftar) {
+            int jumlahProduk = (kat != null) ? kat.hitungProdukByKategori(k) : 0;
+            boolean isDasar = "Makanan".equalsIgnoreCase(k) || "Minuman".equalsIgnoreCase(k) || "Elektronik".equalsIgnoreCase(k);
+            String tipe = isDasar ? "Kategori Bawaan" : "Kategori Kustom";
+            modelTabelKategori.addRow(new Object[]{
+                no++, k, jumlahProduk + " produk", tipe
+            });
+        }
+    }
+
+    private void aksiTambahKategori() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Tambah Kategori Baru");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Ditolak", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String input = JOptionPane.showInputDialog(this,
+            "Masukkan Nama Kategori Baru:\n(Contoh: 'Snack', 'Perawatan', 'Alat Tulis')",
+            "Tambah Kategori Produk", JOptionPane.QUESTION_MESSAGE);
+        if (input == null || input.trim().isEmpty()) return;
+        String katBaru = input.trim();
+
+        try {
+            config.tambahKategori(katBaru);
+            config.simpanKeFile();
+            muatDataTabelKategori();
+            if (parentFrame != null) {
+                parentFrame.terapkanPengaturan();
+            }
+            JOptionPane.showMessageDialog(this, "Kategori '" + katBaru + "' berhasil ditambahkan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas konfigurasi: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void aksiEditKategori() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Edit Kategori Produk");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Ditolak", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int row = tabelKategoriAdmin.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Pilih kategori pada tabel yang ingin diedit!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String katLama = (String) modelTabelKategori.getValueAt(row, 1);
+        String inputBaru = JOptionPane.showInputDialog(this,
+            "Masukkan nama baru untuk kategori '" + katLama + "':",
+            katLama);
+        if (inputBaru == null || inputBaru.trim().isEmpty()) return;
+        String katBaru = inputBaru.trim();
+        if (katBaru.equalsIgnoreCase(katLama)) return;
+
+        try {
+            config.ubahKategori(katLama, katBaru);
+            config.simpanKeFile();
+
+            int diubah = 0;
+            if (parentFrame != null && parentFrame.getKatalog() != null) {
+                diubah = parentFrame.getKatalog().ubahNamaKategoriMassal(katLama, katBaru);
+                parentFrame.simpanKatalogKeDisk();
+                parentFrame.terapkanPengaturan();
+            }
+
+            muatDataTabelKategori();
+            JOptionPane.showMessageDialog(this, 
+                "Kategori '" + katLama + "' berhasil diubah menjadi '" + katBaru + "'!\n" +
+                (diubah > 0 ? diubah + " produk di katalog otomatis disesuaikan." : ""),
+                "Sukses", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validasi Gagal", JOptionPane.ERROR_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void aksiHapusKategori() {
+        try {
+            AuthService.enforceAdmin(currentUser, "Hapus Kategori Produk");
+        } catch (AksesDitolakException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Akses Ditolak", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int row = tabelKategoriAdmin.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Pilih kategori pada tabel yang ingin dihapus!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String kat = (String) modelTabelKategori.getValueAt(row, 1);
+        KatalogProduk katObj = (parentFrame != null) ? parentFrame.getKatalog() : null;
+        int jmlProduk = (katObj != null) ? katObj.hitungProdukByKategori(kat) : 0;
+
+        if (jmlProduk > 0) {
+            int konf = JOptionPane.showConfirmDialog(this,
+                "Terdapat " + jmlProduk + " produk yang saat ini menggunakan kategori '" + kat + "'.\n" +
+                "Jika kategori ini dihapus, produk-produk tersebut akan dialihkan ke kategori bawaan 'Makanan'.\n\n" +
+                "Apakah Anda yakin ingin melanjutkan?",
+                "Konfirmasi Hapus Kategori", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (konf != JOptionPane.YES_OPTION) {
+                return;
+            }
+        } else {
+            int konf = JOptionPane.showConfirmDialog(this,
+                "Apakah Anda yakin ingin menghapus kategori '" + kat + "'?",
+                "Konfirmasi Hapus Kategori", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (konf != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        try {
+            config.hapusKategori(kat);
+            config.simpanKeFile();
+
+            if (jmlProduk > 0 && katObj != null) {
+                katObj.ubahNamaKategoriMassal(kat, "Makanan");
+                parentFrame.simpanKatalogKeDisk();
+            }
+
+            if (parentFrame != null) {
+                parentFrame.terapkanPengaturan();
+            }
+
+            muatDataTabelKategori();
+            JOptionPane.showMessageDialog(this, "Kategori '" + kat + "' berhasil dihapus!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Ditolak Aturan Sistem", JOptionPane.ERROR_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "Gagal menyimpan berkas konfigurasi: " + ex.getMessage(), "Error I/O", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

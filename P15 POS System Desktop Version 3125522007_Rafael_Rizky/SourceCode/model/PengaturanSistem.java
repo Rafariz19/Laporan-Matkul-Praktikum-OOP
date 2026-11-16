@@ -38,6 +38,9 @@ public class PengaturanSistem {
     // Multi-Profile Storage (Nama Profil -> ProfilPengaturan)
     private final Map<String, ProfilPengaturan> daftarProfil;
 
+    // Daftar Kategori Produk Terdaftar
+    private final List<String> daftarKategori;
+
     public PengaturanSistem() {
         this.namaProfilAktif = "Settingan 1";
         this.judulAplikasi = "SISTEM KASIR POINT OF SALE (POS DESKTOP)";
@@ -46,11 +49,17 @@ public class PengaturanSistem {
         this.warnaAksen = new Color(0x00, 0x7A, 0xFF);    // Apple Vibrant Blue (#007AFF)
         this.daftarDiskonMember = new LinkedHashMap<>();
         this.daftarProfil = new LinkedHashMap<>();
+        this.daftarKategori = new ArrayList<>();
 
         // Nilai bawaan diskon membership
         daftarDiskonMember.put("REGULER", 0.00);
         daftarDiskonMember.put("GOLD", 0.10);
         daftarDiskonMember.put("VIP", 0.15);
+
+        // Kategori bawaan awal
+        daftarKategori.add("Makanan");
+        daftarKategori.add("Minuman");
+        daftarKategori.add("Elektronik");
 
         // Buat profil default pertama
         sinkronkanProfilAktifKeMap();
@@ -252,6 +261,73 @@ public class PengaturanSistem {
         return daftarDiskonMember.containsKey(tipeMember.trim().toUpperCase());
     }
 
+    // --- MANAJEMEN KATEGORI PRODUK (CRUD) ---
+
+    public synchronized List<String> getDaftarKategori() {
+        return new ArrayList<>(daftarKategori);
+    }
+
+    public synchronized void tambahKategori(String kategori) {
+        if (kategori == null || kategori.trim().isEmpty()) {
+            throw new IllegalArgumentException("[ERROR] Nama kategori tidak boleh kosong!");
+        }
+        String bersih = kategori.trim();
+        if ("Semua".equalsIgnoreCase(bersih)) {
+            throw new IllegalArgumentException("[DITOLAK] 'Semua' adalah filter bawaan dan tidak dapat ditambahkan sebagai kategori!");
+        }
+        if (bersih.contains("|") || bersih.contains(",") || bersih.contains(";") || bersih.contains("\n") || bersih.contains("\r")) {
+            throw new IllegalArgumentException("[ERROR SANITASI] Nama kategori tidak boleh mengandung karakter pemisah ('|', ',', ';') atau baris baru!");
+        }
+        for (String k : daftarKategori) {
+            if (k.equalsIgnoreCase(bersih)) {
+                throw new IllegalArgumentException("[ERROR] Kategori '" + bersih + "' sudah ada!");
+            }
+        }
+        daftarKategori.add(bersih);
+    }
+
+    public synchronized void ubahKategori(String lama, String baru) {
+        if (lama == null || baru == null || baru.trim().isEmpty()) {
+            throw new IllegalArgumentException("[ERROR] Nama kategori tidak boleh kosong!");
+        }
+        String targetLama = lama.trim();
+        String targetBaru = baru.trim();
+        if ("Semua".equalsIgnoreCase(targetBaru)) {
+            throw new IllegalArgumentException("[DITOLAK] Tidak dapat mengubah kategori menjadi 'Semua'!");
+        }
+        if (targetBaru.contains("|") || targetBaru.contains(",") || targetBaru.contains(";") || targetBaru.contains("\n") || targetBaru.contains("\r")) {
+            throw new IllegalArgumentException("[ERROR SANITASI] Nama kategori tidak boleh mengandung karakter pemisah ('|', ',', ';') atau baris baru!");
+        }
+        int idx = -1;
+        for (int i = 0; i < daftarKategori.size(); i++) {
+            if (daftarKategori.get(i).equalsIgnoreCase(targetLama)) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx == -1) {
+            throw new IllegalArgumentException("[ERROR] Kategori lama '" + targetLama + "' tidak ditemukan!");
+        }
+        for (int i = 0; i < daftarKategori.size(); i++) {
+            if (i != idx && daftarKategori.get(i).equalsIgnoreCase(targetBaru)) {
+                throw new IllegalArgumentException("[ERROR] Kategori '" + targetBaru + "' sudah ada!");
+            }
+        }
+        daftarKategori.set(idx, targetBaru);
+    }
+
+    public synchronized boolean hapusKategori(String kategori) {
+        if (kategori == null) return false;
+        String target = kategori.trim();
+        if ("Semua".equalsIgnoreCase(target)) {
+            throw new IllegalArgumentException("[DITOLAK] Kategori 'Semua' tidak dapat dihapus!");
+        }
+        if ("Makanan".equalsIgnoreCase(target) || "Minuman".equalsIgnoreCase(target) || "Elektronik".equalsIgnoreCase(target)) {
+            throw new IllegalArgumentException("[DITOLAK] Kategori dasar '" + target + "' adalah kategori bawaan sistem dan tidak dapat dihapus!");
+        }
+        return daftarKategori.removeIf(k -> k.equalsIgnoreCase(target));
+    }
+
     // --- PERSISTENSI KE FILE (CRASH-SAFE ATOMIC WRITE) ---
 
     public synchronized void simpanKeFile() throws IOException {
@@ -267,6 +343,9 @@ public class PengaturanSistem {
         for (Map.Entry<String, Double> entry : daftarDiskonMember.entrySet()) {
             lines.add("MEMBER_DISCOUNT=" + entry.getKey() + "|" + entry.getValue());
         }
+
+        lines.add("# DAFTAR KATEGORI PRODUK");
+        lines.add("CATEGORIES=" + String.join(",", daftarKategori));
 
         lines.add("# DAFTAR TEMPLATE TERSIMPAN: PROFILE_ENTRY=NAMA;;;TITLE;;;SUBTITLE;;;HEADER_HEX;;;ACCENT_HEX;;;DISCOUNT_ENTRIES");
         for (ProfilPengaturan p : daftarProfil.values()) {
@@ -322,11 +401,27 @@ public class PengaturanSistem {
                             daftarDiskonMember.put(m, d);
                         } catch (Exception ignored) {}
                     }
+                } else if (line.startsWith("CATEGORIES=")) {
+                    String rawCats = line.substring("CATEGORIES=".length()).trim();
+                    if (!rawCats.isEmpty()) {
+                        String[] arr = rawCats.split(",");
+                        daftarKategori.clear();
+                        for (String c : arr) {
+                            String tc = c.trim();
+                            if (!tc.isEmpty() && !daftarKategori.contains(tc)) {
+                                daftarKategori.add(tc);
+                            }
+                        }
+                    }
                 } else if (line.startsWith("PROFILE_ENTRY=")) {
                     adaProfileEntry = true;
                     muatProfileEntryLine(line.substring("PROFILE_ENTRY=".length()));
                 }
             }
+
+            if (!daftarKategori.contains("Makanan")) daftarKategori.add(0, "Makanan");
+            if (!daftarKategori.contains("Minuman")) daftarKategori.add(1, "Minuman");
+            if (!daftarKategori.contains("Elektronik")) daftarKategori.add(2, "Elektronik");
 
             if (!adaProfileEntry) {
                 // Berkas lama / pertama kali migrasi: jadikan konfigurasi yang termuat sebagai profil awal

@@ -122,6 +122,43 @@ public class TestEditQtyKeranjangDanKategori {
             }
             System.out.println("  6. Kategori dinamis, mutasi, dan pencarian kategori unik terverifikasi.");
 
+            // 5. CRUD Kategori pada PengaturanSistem & Katalog (Massal)
+            PengaturanSistem cfg = new PengaturanSistem();
+            cfg.tambahKategori("Snack Ringan");
+            if (!cfg.getDaftarKategori().contains("Snack Ringan")) {
+                throw new AssertionError("[GAGAL] Kategori 'Snack Ringan' harus terdaftar di PengaturanSistem");
+            }
+
+            p1.ubahKategori("Snack Ringan");
+            if (katalog.hitungProdukByKategori("Snack Ringan") != 1) {
+                throw new AssertionError("[GAGAL] hitungProdukByKategori harus mengembalikan 1 untuk 'Snack Ringan'");
+            }
+
+            // Edit kategori massal
+            cfg.ubahKategori("Snack Ringan", "Camilan");
+            int affected = katalog.ubahNamaKategoriMassal("Snack Ringan", "Camilan");
+            if (affected != 1 || !"Camilan".equalsIgnoreCase(p1.getKategori())) {
+                throw new AssertionError("[GAGAL] ubahNamaKategoriMassal gagal memperbarui produk ke 'Camilan'");
+            }
+
+            // Proteksi kategori bawaan tidak boleh dihapus
+            boolean caughtHapusBawaan = false;
+            try {
+                cfg.hapusKategori("Makanan");
+            } catch (IllegalArgumentException ex) {
+                caughtHapusBawaan = true;
+            }
+            if (!caughtHapusBawaan) {
+                throw new AssertionError("[GAGAL] Menghapus kategori bawaan 'Makanan' harus dilempar exception!");
+            }
+
+            // Hapus kategori kustom
+            boolean okHapus = cfg.hapusKategori("Camilan");
+            if (!okHapus || cfg.getDaftarKategori().contains("Camilan")) {
+                throw new AssertionError("[GAGAL] Hapus kategori kustom 'Camilan' gagal!");
+            }
+            System.out.println("  7. CRUD Kategori PengaturanSistem, proteksi kategori dasar, dan mutasi massal terverifikasi.");
+
             System.out.println("[PASS] TestEditQtyKeranjangDanKategori berhasil!\n");
         } catch (KasirException e) {
             throw new RuntimeException("Unexpected exception: " + e.getMessage(), e);

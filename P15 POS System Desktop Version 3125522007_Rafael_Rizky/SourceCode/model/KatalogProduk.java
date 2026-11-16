@@ -347,5 +347,43 @@ public class KatalogProduk {
         }
         return list;
     }
+
+    /**
+     * Menghitung berapa banyak produk yang menggunakan kategori tertentu.
+     * @param kategori nama kategori
+     * @return jumlah produk yang terdaftar pada kategori tersebut
+     */
+    public int hitungProdukByKategori(String kategori) {
+        if (kategori == null) return 0;
+        int count = 0;
+        for (Produk p : daftarProduk) {
+            if (p.getKategori() != null && p.getKategori().equalsIgnoreCase(kategori.trim())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Mengubah nama kategori lama ke kategori baru untuk seluruh produk di katalog yang bersangkutan.
+     * @param kategoriLama nama kategori lama
+     * @param kategoriBaru nama kategori baru
+     * @return jumlah produk yang terpengaruh/diubah kategorinya
+     */
+    public int ubahNamaKategoriMassal(String kategoriLama, String kategoriBaru) {
+        if (kategoriLama == null || kategoriBaru == null || kategoriBaru.trim().isEmpty()) {
+            return 0;
+        }
+        String targetLama = kategoriLama.trim();
+        String targetBaru = kategoriBaru.trim();
+        int count = 0;
+        for (Produk p : daftarProduk) {
+            if (p.getKategori() != null && p.getKategori().equalsIgnoreCase(targetLama)) {
+                p.ubahKategori(targetBaru);
+                count++;
+            }
+        }
+        return count;
+    }
 }
 

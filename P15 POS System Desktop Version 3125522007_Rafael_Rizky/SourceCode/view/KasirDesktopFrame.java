@@ -78,9 +78,9 @@ public class KasirDesktopFrame extends JFrame {
     private ModernButton btnGantiAkun;
     private ModernTableHeaderRenderer headerRenderer;
 
-    // Category Bar Components (Scrollable Horizontal)
+    // Category Bar Components (Scrollable Horizontal via Mouse Wheel)
     private JPanel pnlBarKategori;
-    private final ArrayList<String> listKategoriTersedia = new ArrayList<>(Arrays.asList("Semua", "Makanan", "Minuman", "Elektronik"));
+    private JScrollPane scrollKategori;
     private String kategoriAktif = "Semua";
 
     @SuppressWarnings("this-escape")
@@ -117,9 +117,23 @@ public class KasirDesktopFrame extends JFrame {
             }
         }
         for (String kat : katalog.getDaftarKategoriUnik()) {
-            if (!listKategoriTersedia.contains(kat)) {
-                listKategoriTersedia.add(kat);
+            if (!"Semua".equalsIgnoreCase(kat) && !pengaturanSistem.getDaftarKategori().contains(kat)) {
+                try {
+                    pengaturanSistem.tambahKategori(kat);
+                } catch (Exception ignored) {}
             }
+        }
+    }
+
+    public KatalogProduk getKatalog() {
+        return katalog;
+    }
+
+    public void simpanKatalogKeDisk() {
+        try {
+            simpanKatalogAmanKeFile(PATH_PRODUK);
+        } catch (IOException e) {
+            System.err.println("Gagal menyimpan katalog: " + e.getMessage());
         }
     }
 
@@ -411,18 +425,30 @@ public class KasirDesktopFrame extends JFrame {
         topPanel.add(row1);
         topPanel.add(Box.createVerticalStrut(4));
 
-        // Category Bar Row (Scrollable Horizontal)
+        // Category Bar Row (Scrollable Horizontal via Mouse Wheel, no visible scrollbar)
         pnlBarKategori = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         pnlBarKategori.setBackground(TemaWarna.APPLE_CANVAS);
 
-        JScrollPane scrollKategori = new JScrollPane(pnlBarKategori);
-        scrollKategori.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollKategori = new JScrollPane(pnlBarKategori);
+        scrollKategori.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollKategori.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
-        scrollKategori.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
+        scrollKategori.setBorder(null);
         scrollKategori.getViewport().setBackground(TemaWarna.APPLE_CANVAS);
         scrollKategori.setBackground(TemaWarna.APPLE_CANVAS);
-        scrollKategori.getHorizontalScrollBar().setUnitIncrement(16);
-        scrollKategori.setPreferredSize(new Dimension(0, 38));
+        scrollKategori.setPreferredSize(new Dimension(0, 36));
+
+        MouseWheelListener mwl = e -> {
+            JScrollBar hBar = scrollKategori.getHorizontalScrollBar();
+            if (hBar != null) {
+                int delta = (int) (e.getPreciseWheelRotation() * 32);
+                if (delta == 0 && e.getWheelRotation() != 0) {
+                    delta = e.getWheelRotation() * 32;
+                }
+                hBar.setValue(hBar.getValue() + delta);
+            }
+        };
+        scrollKategori.addMouseWheelListener(mwl);
+        pnlBarKategori.addMouseWheelListener(mwl);
 
         topPanel.add(scrollKategori);
         topPanel.add(Box.createVerticalStrut(4));
@@ -668,16 +694,42 @@ public class KasirDesktopFrame extends JFrame {
         if (pnlBarKategori == null) return;
         pnlBarKategori.removeAll();
 
-        for (String kat : katalog.getDaftarKategoriUnik()) {
-            if (!listKategoriTersedia.contains(kat)) {
-                listKategoriTersedia.add(kat);
+        List<String> semuaKategori = new ArrayList<>();
+        semuaKategori.add("Semua");
+        for (String k : pengaturanSistem.getDaftarKategori()) {
+            if (!semuaKategori.contains(k)) {
+                semuaKategori.add(k);
             }
+        }
+
+        boolean ada = false;
+        for (String k : semuaKategori) {
+            if (k.equalsIgnoreCase(kategoriAktif)) {
+                ada = true;
+                break;
+            }
+        }
+        if (!ada) {
+            kategoriAktif = "Semua";
         }
 
         Color aksen = pengaturanSistem.getWarnaAksen();
         Color fgAksen = TemaWarna.getKontrasForeground(aksen);
 
-        for (String kat : listKategoriTersedia) {
+        MouseWheelListener mwl = e -> {
+            if (scrollKategori != null) {
+                JScrollBar hBar = scrollKategori.getHorizontalScrollBar();
+                if (hBar != null) {
+                    int delta = (int) (e.getPreciseWheelRotation() * 32);
+                    if (delta == 0 && e.getWheelRotation() != 0) {
+                        delta = e.getWheelRotation() * 32;
+                    }
+                    hBar.setValue(hBar.getValue() + delta);
+                }
+            }
+        };
+
+        for (String kat : semuaKategori) {
             boolean isAktif = kat.equalsIgnoreCase(kategoriAktif);
             ModernButton btnKat;
             if (isAktif) {
@@ -697,43 +749,12 @@ public class KasirDesktopFrame extends JFrame {
                     muatTabelKatalog();
                 }
             });
+            btnKat.addMouseWheelListener(mwl);
             pnlBarKategori.add(btnKat);
         }
 
-        ModernButton btnTambah = new ModernButton("+ Tambah Kategori", TemaWarna.APPLE_BLACK, TemaWarna.TEKS_PUTIH);
-        btnTambah.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        btnTambah.setMargin(new Insets(3, 10, 3, 10));
-        btnTambah.addActionListener(e -> aksiTambahKategoriBaru());
-        pnlBarKategori.add(btnTambah);
-
         pnlBarKategori.revalidate();
         pnlBarKategori.repaint();
-    }
-
-    private void aksiTambahKategoriBaru() {
-        String input = JOptionPane.showInputDialog(this,
-            "Masukkan Nama Kategori Baru:",
-            "Tambah Kategori Produk",
-            JOptionPane.QUESTION_MESSAGE);
-        if (input == null) return;
-        String katBaru = input.trim();
-        if (katBaru.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Nama kategori tidak boleh kosong!", "Peringatan", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        for (String k : listKategoriTersedia) {
-            if (k.equalsIgnoreCase(katBaru)) {
-                kategoriAktif = k;
-                renderBarKategori();
-                muatTabelKatalog();
-                return;
-            }
-        }
-        listKategoriTersedia.add(katBaru);
-        kategoriAktif = katBaru;
-        renderBarKategori();
-        muatTabelKatalog();
-        JOptionPane.showMessageDialog(this, "Kategori '" + katBaru + "' berhasil ditambahkan!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void sesuaikanLebarKolomKatalog() {
@@ -1249,12 +1270,10 @@ public class KasirDesktopFrame extends JFrame {
         final int qtyDiKeranjang = (transaksiAktif != null ? transaksiAktif.getKuantitasItemAktif(kode) : 0);
 
         JComboBox<String> cmbKategori = new JComboBox<>();
-        for (String k : listKategoriTersedia) {
-            if (!k.equalsIgnoreCase("Semua")) {
-                cmbKategori.addItem(k);
-            }
+        for (String k : pengaturanSistem.getDaftarKategori()) {
+            cmbKategori.addItem(k);
         }
-        if (p.getKategori() != null && !p.getKategori().isEmpty() && !listKategoriTersedia.contains(p.getKategori())) {
+        if (p.getKategori() != null && !p.getKategori().isEmpty() && !pengaturanSistem.getDaftarKategori().contains(p.getKategori())) {
             cmbKategori.addItem(p.getKategori());
         }
         cmbKategori.setSelectedItem(p.getKategori());
@@ -1327,8 +1346,11 @@ public class KasirDesktopFrame extends JFrame {
                 katalog.ubahProduk(p.getKode(), namaBaru, hargaBaru, stokBaru, extraBaru, diskonPromoBaru, kategoriBaru);
                 simpanKatalogAmanKeFile(PATH_PRODUK);
 
-                if (!listKategoriTersedia.contains(kategoriBaru)) {
-                    listKategoriTersedia.add(kategoriBaru);
+                if (!pengaturanSistem.getDaftarKategori().contains(kategoriBaru)) {
+                    try {
+                        pengaturanSistem.tambahKategori(kategoriBaru);
+                        pengaturanSistem.simpanKeFile();
+                    } catch (Exception ignored) {}
                 }
                 renderBarKategori();
                 muatTabelKatalog();
@@ -1360,10 +1382,8 @@ public class KasirDesktopFrame extends JFrame {
         JComboBox<String> cmbJenis = new JComboBox<>(new String[]{"Makanan & Minuman", "Elektronik & Gadget"});
         JComboBox<String> cmbKategori = new JComboBox<>();
         cmbKategori.setEditable(true);
-        for (String k : listKategoriTersedia) {
-            if (!k.equalsIgnoreCase("Semua")) {
-                cmbKategori.addItem(k);
-            }
+        for (String k : pengaturanSistem.getDaftarKategori()) {
+            cmbKategori.addItem(k);
         }
         cmbKategori.setSelectedItem("Makanan");
 
@@ -1449,8 +1469,11 @@ public class KasirDesktopFrame extends JFrame {
                 katalog.tambahProduk(p);
                 simpanKatalogAmanKeFile(PATH_PRODUK);
 
-                if (!listKategoriTersedia.contains(kategoriPilihan)) {
-                    listKategoriTersedia.add(kategoriPilihan);
+                if (!pengaturanSistem.getDaftarKategori().contains(kategoriPilihan)) {
+                    try {
+                        pengaturanSistem.tambahKategori(kategoriPilihan);
+                        pengaturanSistem.simpanKeFile();
+                    } catch (Exception ignored) {}
                 }
                 renderBarKategori();
                 muatTabelKatalog();
