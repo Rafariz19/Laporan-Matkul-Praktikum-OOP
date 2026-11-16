@@ -772,11 +772,11 @@ public class KasirDesktopFrame extends JFrame {
         cm.getColumn(0).setMinWidth(45);
         cm.getColumn(0).setMaxWidth(75);
         // 1: Nama Produk
-        cm.getColumn(1).setPreferredWidth(170);
-        // 2: Harga (Rp)
-        cm.getColumn(2).setPreferredWidth(85);
-        cm.getColumn(2).setMinWidth(75);
-        cm.getColumn(2).setMaxWidth(110);
+        cm.getColumn(1).setPreferredWidth(160);
+        // 2: Harga (Rp) (disesuaikan dengan angka + diskon '999999 -100%': ~125px)
+        cm.getColumn(2).setPreferredWidth(125);
+        cm.getColumn(2).setMinWidth(110);
+        cm.getColumn(2).setMaxWidth(155);
         // 3: Stok (disesuaikan dengan integer 999999: ~65px)
         cm.getColumn(3).setPreferredWidth(65);
         cm.getColumn(3).setMinWidth(55);
@@ -808,37 +808,54 @@ public class KasirDesktopFrame extends JFrame {
         cm.getColumn(4).setMaxWidth(130);
     }
 
+    private void tambahBarisProdukKeModelKatalog(Produk p) {
+        if (!kategoriAktif.equalsIgnoreCase("Semua") && !p.getKategori().equalsIgnoreCase(kategoriAktif)) {
+            return;
+        }
+        String infoKhusus = "";
+        double diskonExp = 0.0;
+        if (p instanceof ProdukMakanan) {
+            ProdukMakanan pm = (ProdukMakanan) p;
+            long sisaHari = pm.hitungSisaHari();
+            diskonExp = pm.hitungDiskonKedaluwarsa();
+            if (sisaHari < 0) {
+                infoKhusus = "[KADALUARSA] " + pm.getTanggalKadaluarsa();
+            } else if (sisaHari <= 7) {
+                infoKhusus = String.format("[EXP %d HR (Disc %.0f%%)] %s", sisaHari, diskonExp * 100, pm.getTanggalKadaluarsa());
+            } else {
+                infoKhusus = "Exp: " + pm.getTanggalKadaluarsa();
+            }
+        } else if (p instanceof ProdukElektronik) {
+            infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
+        }
+        if (p.getDiskonPromo() > 0.0) {
+            infoKhusus += String.format(java.util.Locale.US, " [PROMO %.0f%%]", p.getDiskonPromo() * 100);
+        }
+        String labelStok = String.valueOf(p.getStok());
+        if (p.isStokMenipis()) {
+            labelStok = p.getStok() + " [MENIPIS]";
+        }
+
+        // Diskon efektif produk (diskon promo toko vs diskon dinamis kedaluwarsa)
+        double diskon = Math.max(p.getDiskonPromo(), diskonExp);
+        String labelHarga = String.format("%,d", p.getHarga());
+        if (diskon > 0.0) {
+            String pctStr = (diskon * 100 % 1 == 0)
+                    ? String.format(java.util.Locale.US, "%.0f%%", diskon * 100)
+                    : String.format(java.util.Locale.US, "%.1f%%", diskon * 100);
+            labelHarga = "<html>" + labelHarga + " <font color='#FF3B30'><b>-" + pctStr + "</b></font></html>";
+        }
+
+        modelKatalog.addRow(new Object[]{
+            p.getKode(), p.getNama(),
+            labelHarga, labelStok, infoKhusus
+        });
+    }
+
     private void muatTabelKatalog() {
         modelKatalog.setRowCount(0);
         for (Produk p : katalog.getDaftarProdukReadOnly()) {
-            if (!kategoriAktif.equalsIgnoreCase("Semua") && !p.getKategori().equalsIgnoreCase(kategoriAktif)) {
-                continue;
-            }
-            String infoKhusus = "";
-            if (p instanceof ProdukMakanan) {
-                ProdukMakanan pm = (ProdukMakanan) p;
-                long sisaHari = pm.hitungSisaHari();
-                if (sisaHari < 0) {
-                    infoKhusus = "[KADALUARSA] " + pm.getTanggalKadaluarsa();
-                } else if (sisaHari <= 7) {
-                    infoKhusus = String.format("[EXP %d HR (Disc %.0f%%)] %s", sisaHari, pm.hitungDiskonKedaluwarsa() * 100, pm.getTanggalKadaluarsa());
-                } else {
-                    infoKhusus = "Exp: " + pm.getTanggalKadaluarsa();
-                }
-            } else if (p instanceof ProdukElektronik) {
-                infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
-            }
-            if (p.getDiskonPromo() > 0.0) {
-                infoKhusus += String.format(java.util.Locale.US, " [PROMO %.0f%%]", p.getDiskonPromo() * 100);
-            }
-            String labelStok = String.valueOf(p.getStok());
-            if (p.isStokMenipis()) {
-                labelStok = p.getStok() + " [MENIPIS]";
-            }
-            modelKatalog.addRow(new Object[]{
-                p.getKode(), p.getNama(),
-                String.format("%,d", p.getHarga()), labelStok, infoKhusus
-            });
+            tambahBarisProdukKeModelKatalog(p);
         }
         sesuaikanLebarKolomKatalog();
     }
@@ -850,34 +867,7 @@ public class KasirDesktopFrame extends JFrame {
         }
         modelKatalog.setRowCount(0);
         for (Produk p : katalog.cariProdukByNama(kw)) {
-            if (!kategoriAktif.equalsIgnoreCase("Semua") && !p.getKategori().equalsIgnoreCase(kategoriAktif)) {
-                continue;
-            }
-            String infoKhusus = "";
-            if (p instanceof ProdukMakanan) {
-                ProdukMakanan pm = (ProdukMakanan) p;
-                long sisaHari = pm.hitungSisaHari();
-                if (sisaHari < 0) {
-                    infoKhusus = "[KADALUARSA] " + pm.getTanggalKadaluarsa();
-                } else if (sisaHari <= 7) {
-                    infoKhusus = String.format("[EXP %d HR (Disc %.0f%%)] %s", sisaHari, pm.hitungDiskonKedaluwarsa() * 100, pm.getTanggalKadaluarsa());
-                } else {
-                    infoKhusus = "Exp: " + pm.getTanggalKadaluarsa();
-                }
-            } else if (p instanceof ProdukElektronik) {
-                infoKhusus = "Garansi: " + ((ProdukElektronik) p).getGaransiBulan() + " bln";
-            }
-            if (p.getDiskonPromo() > 0.0) {
-                infoKhusus += String.format(java.util.Locale.US, " [PROMO %.0f%%]", p.getDiskonPromo() * 100);
-            }
-            String labelStok = String.valueOf(p.getStok());
-            if (p.isStokMenipis()) {
-                labelStok = p.getStok() + " [MENIPIS]";
-            }
-            modelKatalog.addRow(new Object[]{
-                p.getKode(), p.getNama(),
-                String.format("%,d", p.getHarga()), labelStok, infoKhusus
-            });
+            tambahBarisProdukKeModelKatalog(p);
         }
         sesuaikanLebarKolomKatalog();
     }
