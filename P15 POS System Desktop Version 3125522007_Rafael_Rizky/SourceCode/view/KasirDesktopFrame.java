@@ -85,8 +85,12 @@ public class KasirDesktopFrame extends JFrame {
     private JScrollPane scrollKategori;
     private String kategoriAktif = "Semua";
 
-    @SuppressWarnings("this-escape")
     public KasirDesktopFrame() {
+        this(null);
+    }
+
+    @SuppressWarnings("this-escape")
+    public KasirDesktopFrame(User preAuthenticatedUser) {
         super("Sistem Kasir Sederhana (POS Desktop) - Rafael Rizky (3125522007)");
         this.pengaturanSistem = new PengaturanSistem();
         this.pengaturanSistem.muatDariFile();
@@ -98,7 +102,11 @@ public class KasirDesktopFrame extends JFrame {
         this.authService = new AuthService(PATH_USERS);
 
         initData();
-        prosesLoginAwal();
+        if (preAuthenticatedUser != null) {
+            this.currentUser = preAuthenticatedUser;
+        } else {
+            prosesLoginAwal();
+        }
         initUI();
         mulaiTransaksiBaru();
     }
