@@ -1,4 +1,4 @@
-MK01|Roti Tawar Sari Roti|15000|25|Makanan|2026-12-31|0.10
+MK01|Roti Tawar Sari Roti|15000|24|Makanan|2026-12-31|0.10
 MK02|Donat Coklat Barokah|5000|40|Makanan|2026-12-31|0.00
 MK03|Indomie Goreng Spesial|3500|150|Makanan|2027-06-30|0.00
 MK04|Biskuit Roma Kelapa 300g|10500|30|Snack & Biskuit|2027-04-15|0.00

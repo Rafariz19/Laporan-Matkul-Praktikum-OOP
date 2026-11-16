@@ -10,7 +10,7 @@ MEMBER_DISCOUNT=SILVER|0.05
 MEMBER_DISCOUNT=GOLD|0.1
 MEMBER_DISCOUNT=VIP|0.15
 # DAFTAR KATEGORI PRODUK
-CATEGORIES=Makanan,Minuman,Elektronik,Kebutuhan Pokok,Perawatan Diri,Snack & Biskuit
+CATEGORIES=Makanan,Minuman,Elektronik,Kebutuhan Pokok,Perawatan Diri,Snack & Biskuit,Sirup & Kue Kaleng,Parcel Lebaran,Bumbu & Sembako
 # DAFTAR TEMPLATE TERSIMPAN: PROFILE_ENTRY=NAMA;;;TITLE;;;SUBTITLE;;;HEADER_HEX;;;ACCENT_HEX;;;DISCOUNT_ENTRIES;;;CATEGORIES
-PROFILE_ENTRY=Settingan 1;;;MINIMARKET BAROKAH CABANG SUMENEP;;;Kasir: Rafael Rizky;;;#1D1D1F;;;#007AFF;;;REGULER:0.0,SILVER:0.05,GOLD:0.1,VIP:0.15;;;Makanan,Minuman,Elektronik,Kebutuhan Pokok,Perawatan Diri,Snack & Biskuit
-PROFILE_ENTRY=Settingan 2;;;MINIMARKET BAROKAH CABANG SUMENEP - HARI RAYA;;;Kasir: Rafael Rizky;;;#C85A17;;;#FF8C00;;;REGULER:0.0,SILVER:0.1,GOLD:0.2,VIP:0.25,SPESIAL HARI RAYA:0.3;;;Makanan,Minuman,Elektronik,Sirup & Kue Kaleng,Parcel Lebaran,Bumbu & Sembako
+PROFILE_ENTRY=Settingan 1;;;MINIMARKET BAROKAH CABANG SUMENEP;;;Kasir: Rafael Rizky;;;#1D1D1F;;;#007AFF;;;REGULER:0.0,SILVER:0.05,GOLD:0.1,VIP:0.15;;;Makanan,Minuman,Elektronik,Kebutuhan Pokok,Perawatan Diri,Snack & Biskuit,Sirup & Kue Kaleng,Parcel Lebaran,Bumbu & Sembako
+PROFILE_ENTRY=Settingan 2;;;MINIMARKET BAROKAH CABANG SUMENEP - HARI RAYA;;;Kasir: Rafael Rizky;;;#1C1C1C;;;#FF4F00;;;REGULER:0.0,SILVER:0.1,GOLD:0.2,VIP:0.25,SPESIAL HARI RAYA:0.3;;;Makanan,Minuman,Elektronik,Sirup & Kue Kaleng,Parcel Lebaran,Bumbu & Sembako
